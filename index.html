@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: live-квесты, XP, ранги, боссы недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=0.5.0" />
+  <link rel="manifest" href="manifest.json?v=0.6.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=0.5.0" />
+  <link rel="stylesheet" href="styles.css?v=0.6.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,7 +17,7 @@
         <p class="eyebrow">личная система прокачки</p>
         <h1>PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v0.5</span>
+          <span id="appVersionValue">v0.6</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -125,21 +125,9 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Live quests</p>
+                <p class="eyebrow">Daily quests</p>
                 <h2 id="dailyLiveTitle">Квесты текущего дня</h2>
-                <p class="muted">Дату не вводишь. Отмечаешь галочки — система сохраняет live. В 00:00 МСК день закрывается сам.</p>
               </div>
-            </div>
-
-            <div class="form-grid">
-              <label>Вес<input name="weight" type="number" step="0.1" placeholder="85.0" /></label>
-              <label>Талия<input name="waist" type="number" step="0.1" placeholder="82" /></label>
-              <label>Сон<input name="sleep" type="number" step="0.25" placeholder="7" /></label>
-              <label>Шаги<input name="steps" type="number" step="100" placeholder="12000" /></label>
-              <label>Энергетик<input name="energyDrink" type="number" min="0" step="1" placeholder="0" /></label>
-              <label>Инста, мин<input name="instagram" type="number" min="0" step="1" placeholder="0" /></label>
-              <label>Настроение 1–10<input name="mood" type="number" min="1" max="10" step="1" placeholder="7" /></label>
-              <label>Тревога 1–10<input name="anxiety" type="number" min="1" max="10" step="1" placeholder="3" /></label>
             </div>
           </section>
 
@@ -155,17 +143,6 @@
             <div id="penaltyGrid" class="checkbox-grid"></div>
           </section>
 
-          <section class="panel result-panel sticky-result">
-            <div>
-              <p class="eyebrow">Live XP</p>
-              <h3 id="dailyResultTitle">0 XP — Broken Day</h3>
-              <p id="dailyResultDetails" class="muted">Отмечай квесты, система считает день.</p>
-            </div>
-            <div class="form-actions">
-              <button class="primary-btn" type="submit">Зафиксировать</button>
-              <button class="ghost-btn" id="clearDailyBtn" type="button">Очистить день</button>
-            </div>
-          </section>
         </form>
       </section>
 
@@ -223,22 +200,34 @@
         <section class="panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Settings</p>
-              <h2>Профиль</h2>
+              <p class="eyebrow">Quest import</p>
+              <h2>Импорт задач</h2>
+              <p class="muted" id="questImportInfo">Максимум 10 квестов на категорию.</p>
             </div>
           </div>
-          <form id="settingsForm" class="form-stack">
-            <div class="form-grid">
-              <label>Имя персонажа<input name="playerName" type="text" placeholder="Cain / своё имя" /></label>
-              <label>Название сезона<input name="seasonName" type="text" placeholder="Москва / Сушка / Работа" /></label>
-              <label>Дата старта<input name="startDate" type="date" /></label>
-              <label>Цель сезона<input name="seasonGoal" type="text" placeholder="стабильный режим" /></label>
+          <div class="form-actions wrap-actions">
+            <button class="primary-btn" id="downloadQuestTemplateBtn" type="button">Скачать шаблон задач</button>
+            <label class="ghost-btn file-label" for="questImportFile">Импортировать задачи</label>
+            <input id="questImportFile" type="file" accept="application/json" hidden />
+            <button class="ghost-btn" id="resetQuestConfigBtn" type="button">Сбросить квесты</button>
+          </div>
+          <div class="schema-box">
+            <p class="muted">Файл можно скинуть в ChatGPT, заполнить нужными квестами и загрузить сюда. Поддержка: <b>merge</b> — добавить, <b>replace</b> — заменить категорию.</p>
+            <code>{ "type": "prime-rpg-quest-pack", "mode": "merge", "dailyQuests": [...] }</code>
+          </div>
+        </section>
+
+        <section class="panel danger-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Danger zone</p>
+              <h2>Сброс</h2>
+              <p class="muted">Очищает текущий день, недели, историю, настройки и локальные данные PRIME RPG.</p>
             </div>
-            <div class="form-actions">
-              <button class="primary-btn" type="submit">Сохранить профиль</button>
-              <button class="danger-btn" id="resetBtn" type="button">Сбросить всё</button>
-            </div>
-          </form>
+          </div>
+          <div class="form-actions">
+            <button class="danger-btn" id="resetBtn" type="button">Сбросить всё</button>
+          </div>
         </section>
       </section>
     </main>
@@ -273,6 +262,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=0.5.0"></script>
+  <script src="app.js?v=0.6.0"></script>
 </body>
 </html>

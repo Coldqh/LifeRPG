@@ -1,0 +1,22 @@
+{
+  "type": "prime-rpg-quest-pack",
+  "mode": "merge",
+  "dailyQuests": [
+    {
+      "category": "BODY",
+      "title": "BODY",
+      "stat": "BODY",
+      "items": [
+        { "text": "мобилити 15 минут", "xp": 10, "stat": "BODY" }
+      ]
+    },
+    {
+      "category": "CREATOR",
+      "title": "CREATOR",
+      "stat": "CREATOR",
+      "items": [
+        { "text": "30 минут PRIME RPG / LifeSim / проекта", "xp": 20, "stat": "CREATOR" }
+      ]
+    }
+  ]
+}

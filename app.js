@@ -1,17 +1,18 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v5';
+const STORAGE_KEY = 'prime-rpg-state-v6';
+const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.5';
+const APP_VERSION = 'v0.6';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
 const STAT_KEYS = ['BODY', 'FIGHTER', 'MIND', 'WORK', 'CREATOR', 'CALM', 'DISCIPLINE', 'CHARISMA', 'MONEY'];
 const LEVELS = [0, 1000, 2200, 3600, 5200, 7000, 9000, 11500, 14500, 18000, 22000, 27000, 33000, 40000];
 
-const DAILY_QUESTS = [
+const DEFAULT_DAILY_QUESTS = [
   {
     key: 'body', title: 'BODY', stat: 'BODY', maxXp: 40,
     items: [
@@ -95,12 +96,11 @@ const PENALTIES = [
 
 const WEEKLY_BOSSES = [
   {
-    key: 'bodyBoss', title: 'BODY BOSS', stat: 'BODY', maxXp: 150,
+    key: 'bodyBoss', title: 'BODY BOSS', stat: 'BODY', maxXp: 130,
     items: [
       { id: 'body_3_trainings', text: '3 тренировки за неделю', xp: 50 },
       { id: 'body_avg_steps', text: 'средние шаги 12к+', xp: 30 },
       { id: 'body_food_5', text: 'питание 5/7 дней по плану', xp: 30 },
-      { id: 'body_weight_waist', text: 'вес и талия замерены', xp: 20 },
       { id: 'body_photo', text: 'фото формы 1 раз', xp: 20 }
     ]
   },
@@ -155,23 +155,111 @@ const WEEKLY_BOSSES = [
   }
 ];
 
-const DAILY_METRIC_FIELDS = ['weight', 'waist', 'sleep', 'steps', 'energyDrink', 'instagram', 'mood', 'anxiety'];
-const NOTE_FIELDS = ['workDone', 'workLearned', 'workStuck', 'creatorProject', 'creatorDone', 'calmAnnoyed', 'calmGood', 'mindNote', 'charismaNote', 'moneyNote'];
-const WEEKLY_NOTE_FIELDS = ['workTasks', 'workInsight', 'creatorProject', 'creatorResult', 'calmTriggers', 'calmHelped', 'socialContacts', 'moneyInsight', 'weekSummary', 'improve'];
+const DAILY_METRIC_FIELDS = [];
+const NOTE_FIELDS = [];
+const WEEKLY_NOTE_FIELDS = [];
 
 let state;
 let suppressAutosave = false;
+
+function cloneQuestConfig(quests) {
+  return JSON.parse(JSON.stringify(Array.isArray(quests) ? quests : []));
+}
+
+function getDailyQuests() {
+  const quests = state?.config?.dailyQuests;
+  return Array.isArray(quests) && quests.length ? quests : DEFAULT_DAILY_QUESTS;
+}
+
+function safeId(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'e')
+    .replace(/[^a-zа-я0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48) || `quest_${Date.now()}`;
+}
+
+function normalizeStat(value, fallback = 'DISCIPLINE') {
+  const stat = String(value || fallback).trim().toUpperCase();
+  return STAT_KEYS.includes(stat) ? stat : fallback;
+}
+
+function normalizeCategoryKey(value) {
+  const raw = String(value || '').trim();
+  const known = {
+    BODY: 'body', FIGHTER: 'fighter', WORK: 'work', CREATOR: 'creator', CALM: 'calm', MIND: 'mind',
+    CHARISMA: 'charisma', SOCIAL: 'charisma', DISCIPLINE: 'discipline', MONEY: 'money'
+  };
+  return known[raw.toUpperCase()] || safeId(raw);
+}
+
+function normalizeQuestItem(item, categoryKey) {
+  if (!item || typeof item !== 'object') return null;
+  const text = String(item.text || item.title || item.name || '').trim();
+  if (!text) return null;
+  const xp = Math.max(1, Math.min(100, Number(item.xp || item.XP || 10)));
+  const id = safeId(item.id || `${categoryKey}_${text}`);
+  return { id, text, xp, stat: normalizeStat(item.stat || item.category || categoryKey.toUpperCase(), 'DISCIPLINE') };
+}
+
+function normalizeQuestPack(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('quest pack должен быть JSON-объектом');
+  const mode = String(payload.mode || 'merge').toLowerCase() === 'replace' ? 'replace' : 'merge';
+  const source = Array.isArray(payload.dailyQuests) ? payload.dailyQuests : Array.isArray(payload.quests) ? payload.quests : [];
+  if (!source.length) throw new Error('в quest pack нет dailyQuests или quests');
+
+  const groups = new Map();
+  source.forEach((entry) => {
+    if (!entry || typeof entry !== 'object') return;
+    if (Array.isArray(entry.items) || Array.isArray(entry.quests)) {
+      const title = String(entry.category || entry.title || entry.name || 'CUSTOM').trim();
+      const key = normalizeCategoryKey(title);
+      const stat = normalizeStat(entry.stat || title, 'DISCIPLINE');
+      const items = (entry.items || entry.quests).map((item) => normalizeQuestItem(item, key)).filter(Boolean);
+      if (!groups.has(key)) groups.set(key, { key, title: String(entry.title || entry.category || key).trim().toUpperCase(), stat, maxXp: Number(entry.maxXp || 0), items: [] });
+      groups.get(key).items.push(...items);
+    } else {
+      const title = String(entry.category || 'CUSTOM').trim();
+      const key = normalizeCategoryKey(title);
+      const stat = normalizeStat(entry.stat || title, 'DISCIPLINE');
+      const item = normalizeQuestItem(entry, key);
+      if (!item) return;
+      if (!groups.has(key)) groups.set(key, { key, title: title.toUpperCase(), stat, maxXp: 0, items: [] });
+      groups.get(key).items.push(item);
+    }
+  });
+
+  const categories = [...groups.values()].map((group) => {
+    const seen = new Set();
+    const items = [];
+    group.items.forEach((item) => {
+      if (seen.has(item.id) || items.length >= 10) return;
+      seen.add(item.id);
+      items.push(item);
+    });
+    const maxXp = group.maxXp > 0 ? Math.min(Number(group.maxXp), items.reduce((sum, item) => sum + item.xp, 0)) : items.reduce((sum, item) => sum + item.xp, 0);
+    return { ...group, maxXp, items };
+  }).filter((group) => group.items.length);
+
+  if (!categories.length) throw new Error('не найдено валидных квестов');
+  return { mode, categories };
+}
 
 function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 5,
+    version: 6,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
       seasonGoal: 'стабильный режим: тело, работа, проекты, спокойствие',
       startDate: today
+    },
+    config: {
+      dailyQuests: cloneQuestConfig(DEFAULT_DAILY_QUESTS)
     },
     system: {
       currentDate: today,
@@ -188,7 +276,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -203,8 +291,9 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 5,
+    version: 6,
     profile: { ...base.profile, ...(parsed.profile || {}) },
+    config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
     days: Array.isArray(parsed.days) ? parsed.days : [],
     weeks: Array.isArray(parsed.weeks) ? parsed.weeks : []
@@ -228,7 +317,7 @@ function migrateState(parsed) {
 }
 
 function saveState() {
-  state.version = 5;
+  state.version = 6;
   state.system.lastSyncAt = nowMoscowStamp();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -349,7 +438,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.5.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.6.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -367,9 +456,7 @@ function createDayDraft(date, dayNumber) {
     date,
     dayNumber,
     createdAt: nowMoscowStamp(),
-    metrics: {
-      weight: '', waist: '', sleep: '', steps: '', energyDrink: '', instagram: '', mood: '', anxiety: ''
-    },
+    metrics: {},
     notes: {},
     completed: [],
     penalties: [],
@@ -411,7 +498,7 @@ function calculateDailyFromDraft(draft = state.currentDay) {
   const categoryXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
   const questXp = {};
 
-  DAILY_QUESTS.forEach((quest) => {
+  getDailyQuests().forEach((quest) => {
     let sum = 0;
     quest.items.forEach((item) => {
       if (completedSet.has(item.id)) {
@@ -495,7 +582,7 @@ function formatDate(iso) {
 function renderDailyQuests() {
   const grid = $('#dailyQuestGrid');
   if (!grid) return;
-  grid.innerHTML = DAILY_QUESTS.map((quest) => `
+  grid.innerHTML = getDailyQuests().map((quest) => `
     <article class="quest-card">
       <header>
         <div>
@@ -558,7 +645,7 @@ function fillDailyForm() {
   NOTE_FIELDS.forEach((field) => {
     if (form.elements[field]) form.elements[field].value = draft.notes?.[field] ?? '';
   });
-  DAILY_QUESTS.flatMap((quest) => quest.items).forEach((item) => setChecked(form, `q_${item.id}`, draft.completed?.includes(item.id)));
+  getDailyQuests().flatMap((quest) => quest.items).forEach((item) => setChecked(form, `q_${item.id}`, draft.completed?.includes(item.id)));
   PENALTIES.forEach((item) => setChecked(form, `p_${item.id}`, draft.penalties?.includes(item.id)));
   suppressAutosave = false;
   updateDailyPreview();
@@ -600,7 +687,7 @@ function collectCurrentDayFromForm() {
   NOTE_FIELDS.forEach((field) => {
     draft.notes[field] = form.elements[field]?.value?.trim() || '';
   });
-  DAILY_QUESTS.flatMap((quest) => quest.items).forEach((item) => {
+  getDailyQuests().flatMap((quest) => quest.items).forEach((item) => {
     if (checked(form, `q_${item.id}`)) draft.completed.push(item.id);
   });
   PENALTIES.forEach((item) => {
@@ -648,9 +735,12 @@ function autosaveCurrentWeek() {
 }
 
 function updateDailyPreview() {
+  const title = $('#dailyResultTitle');
+  const details = $('#dailyResultDetails');
+  if (!title || !details) return;
   const result = calculateDailyFromDraft(state.currentDay);
-  $('#dailyResultTitle').textContent = `${result.netXp} XP — ${result.rank}`;
-  $('#dailyResultDetails').textContent = `Live-день: ${formatDate(state.currentDay.date)}. Плюс: ${result.positiveXp} XP. Штрафы: ${result.penaltyXp} XP. База BODY/WORK/CREATOR/CALM: ${['body', 'work', 'creator', 'calm'].map((key) => result.questXp[key] || 0).reduce((a, b) => a + b, 0)} / 150 XP.`;
+  title.textContent = `${result.netXp} XP — ${result.rank}`;
+  details.textContent = `Live-день: ${formatDate(state.currentDay.date)}. Плюс: ${result.positiveXp} XP. Штрафы: ${result.penaltyXp} XP. База BODY/WORK/CREATOR/CALM: ${['body', 'work', 'creator', 'calm'].map((key) => result.questXp[key] || 0).reduce((a, b) => a + b, 0)} / 150 XP.`;
 }
 
 function updateWeeklyPreview() {
@@ -735,22 +825,10 @@ function finalizeWeek(draft, reason = 'monday-rollover') {
 }
 
 function buildWeekMetrics(draft, days) {
-  const weights = days.map((day) => toNumber(day.metrics?.weight)).filter((value) => value !== null);
-  const waists = days.map((day) => toNumber(day.metrics?.waist)).filter((value) => value !== null);
-  const steps = days.map((day) => toNumber(day.metrics?.steps)).filter((value) => value !== null);
-  const sleeps = days.map((day) => toNumber(day.metrics?.sleep)).filter((value) => value !== null);
-  const anxiety = days.map((day) => toNumber(day.metrics?.anxiety)).filter((value) => value !== null);
   return {
     weekNumber: getSeasonWeekNumber(draft.weekId),
     startDate: draft.weekId,
     endDate: getWeekEnd(draft.weekId),
-    weightStart: weights[0] ?? '',
-    weightEnd: weights[weights.length - 1] ?? '',
-    waistStart: waists[0] ?? '',
-    waistEnd: waists[waists.length - 1] ?? '',
-    avgSteps: average(steps),
-    avgSleep: average(sleeps),
-    avgAnxiety: average(anxiety),
     reports: days.length,
     trainingCount: days.filter((day) => day.completed?.includes('body_training')).length,
     foodPlanDays: days.filter((day) => day.completed?.includes('body_food')).length,
@@ -782,9 +860,8 @@ function isWeeklyMinimumPassed(days, weekDraft = state.currentWeek) {
   const workLogs = days.filter((day) => day.completed?.includes('work_log')).length;
   const projectSessions = days.filter((day) => day.completed?.includes('creator_project30')).length;
   const instaControl = days.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  const bodyMeasure = days.some((day) => toNumber(day.metrics?.weight) !== null && toNumber(day.metrics?.waist) !== null);
   const social = days.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
-  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports && bodyMeasure && social;
+  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports && social;
 }
 
 function buildAutoWeekSummary(days, calc) {
@@ -965,7 +1042,6 @@ function renderWeeklyMinimum() {
   const workLogs = includeCurrent.filter((day) => day.completed?.includes('work_log')).length;
   const projectSessions = includeCurrent.filter((day) => day.completed?.includes('creator_project30')).length;
   const instaControl = includeCurrent.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  const bodyMeasure = includeCurrent.some((day) => toNumber(day.metrics?.weight) !== null && toNumber(day.metrics?.waist) !== null);
   const social = includeCurrent.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
 
   const items = [
@@ -974,7 +1050,6 @@ function renderWeeklyMinimum() {
     { text: '3 проектные сессии', value: `${projectSessions}/3`, ok: projectSessions >= 3 },
     { text: '7 активных дней', value: `${reports}/7`, ok: reports >= 7 },
     { text: 'инста под контролем', value: `${instaControl}/${reports || 7}`, ok: reports >= 1 && instaControl === reports },
-    { text: 'вес + талия', value: bodyMeasure ? 'есть' : 'нет', ok: bodyMeasure },
     { text: '1 социальное действие', value: social ? 'есть' : 'нет', ok: social }
   ];
 
@@ -1048,12 +1123,8 @@ function renderHistory() {
 }
 
 function renderSettings() {
-  const form = $('#settingsForm');
-  form.elements.playerName.value = state.profile.playerName || '';
-  form.elements.seasonName.value = state.profile.seasonName || '';
-  form.elements.startDate.value = state.profile.startDate || todayMoscowISO();
-  form.elements.seasonGoal.value = state.profile.seasonGoal || '';
-  if ($('#chatPrompt')) $('#chatPrompt').textContent = buildChatPrompt();
+  const info = $('#questImportInfo');
+  if (info) info.textContent = `Категорий: ${getDailyQuests().length}. Максимум 10 квестов на категорию.`;
 }
 
 function buildChatPrompt() {
@@ -1078,19 +1149,7 @@ Status: ${getStatusRank(totals.totalXp)}
 }
 
 function saveSettings(event) {
-  event.preventDefault();
-  const form = $('#settingsForm');
-  state.profile = {
-    ...state.profile,
-    playerName: form.elements.playerName.value.trim(),
-    seasonName: form.elements.seasonName.value.trim() || 'Москва / Сушка / Работа',
-    startDate: form.elements.startDate.value || todayMoscowISO(),
-    seasonGoal: form.elements.seasonGoal.value.trim()
-  };
-  state.currentWeek.weekNumber = getSeasonWeekNumber(state.currentWeek.weekId);
-  saveState();
-  renderAll();
-  showToast('Профиль сохранён');
+  event?.preventDefault?.();
 }
 
 function switchTab(tabId) {
@@ -1113,6 +1172,102 @@ function exportData() {
   showToast('JSON экспортирован');
 }
 
+
+function applyQuestPack(payload) {
+  const pack = normalizeQuestPack(payload);
+  const current = cloneQuestConfig(getDailyQuests());
+
+  pack.categories.forEach((incoming) => {
+    let category = current.find((item) => item.key === incoming.key || item.title?.toUpperCase() === incoming.title.toUpperCase());
+    if (!category) {
+      category = { key: incoming.key, title: incoming.title, stat: incoming.stat, maxXp: 0, items: [] };
+      current.push(category);
+    }
+
+    if (pack.mode === 'replace') category.items = [];
+
+    const byId = new Map((category.items || []).map((item) => [item.id, item]));
+    incoming.items.forEach((item) => {
+      if (byId.has(item.id)) byId.set(item.id, item);
+      else if (byId.size < 10) byId.set(item.id, item);
+    });
+
+    category.items = [...byId.values()].slice(0, 10);
+    category.stat = normalizeStat(incoming.stat || category.stat, 'DISCIPLINE');
+    category.title = String(incoming.title || category.title || incoming.key).toUpperCase();
+    const sum = category.items.reduce((total, item) => total + Number(item.xp || 0), 0);
+    category.maxXp = Math.max(0, Number(incoming.maxXp || sum));
+  });
+
+  state.config = { ...(state.config || {}), dailyQuests: current.filter((category) => Array.isArray(category.items) && category.items.length) };
+  state.currentDay.completed = (state.currentDay.completed || []).filter((id) => getDailyQuests().some((category) => category.items.some((item) => item.id === id)));
+  saveState();
+  renderDailyQuests();
+  fillDailyForm();
+  renderAll();
+  showToast(`Квесты импортированы: ${pack.categories.length} категорий`);
+}
+
+function importQuestPack(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(String(reader.result));
+      applyQuestPack(payload);
+    } catch (error) {
+      console.error(error);
+      showToast(`Ошибка импорта квестов: ${error.message || 'bad JSON'}`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function downloadQuestTemplate() {
+  const template = {
+    type: 'prime-rpg-quest-pack',
+    mode: 'merge',
+    dailyQuests: [
+      {
+        category: 'BODY',
+        title: 'BODY',
+        stat: 'BODY',
+        items: [
+          { text: 'пример нового BODY-квеста', xp: 10, stat: 'BODY' }
+        ]
+      },
+      {
+        category: 'CREATOR',
+        title: 'CREATOR',
+        stat: 'CREATOR',
+        items: [
+          { text: 'пример нового CREATOR-квеста', xp: 10, stat: 'CREATOR' }
+        ]
+      }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'prime-rpg-quest-pack-template.json';
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast('Шаблон quest pack скачан');
+}
+
+function resetQuestConfig() {
+  const ok = window.confirm('Сбросить квесты к базовым? История останется.');
+  if (!ok) return;
+  state.config = { ...(state.config || {}), dailyQuests: cloneQuestConfig(DEFAULT_DAILY_QUESTS) };
+  state.currentDay.completed = [];
+  saveState();
+  renderDailyQuests();
+  fillDailyForm();
+  renderAll();
+  showToast('Квесты сброшены к базовым');
+}
+
 function importData(file) {
   if (!file) return;
   const reader = new FileReader();
@@ -1120,6 +1275,10 @@ function importData(file) {
     try {
       const imported = JSON.parse(String(reader.result));
       if (!imported || typeof imported !== 'object') throw new Error('bad file');
+      if (imported.type === 'prime-rpg-quest-pack' || imported.dailyQuests || imported.quests) {
+        applyQuestPack(imported);
+        return;
+      }
       state = migrateState(imported);
       saveState();
       syncClock(false);
@@ -1216,32 +1375,41 @@ function renderAll() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=0.5.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
+    navigator.serviceWorker.register('./sw.js?v=0.6.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
   }
 }
 
 function bindEvents() {
   $$('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-  $('#dailyForm').addEventListener('input', autosaveCurrentDay);
-  $('#dailyForm').addEventListener('change', autosaveCurrentDay);
-  $('#dailyForm').addEventListener('submit', (event) => {
-    event.preventDefault();
-    autosaveCurrentDay();
-    showToast('Текущий день зафиксирован');
-  });
-  $('#weeklyForm').addEventListener('input', autosaveCurrentWeek);
-  $('#weeklyForm').addEventListener('change', autosaveCurrentWeek);
-  $('#weeklyForm').addEventListener('submit', (event) => {
-    event.preventDefault();
-    autosaveCurrentWeek();
-    showToast('Текущая неделя зафиксирована');
-  });
-  $('#settingsForm').addEventListener('submit', saveSettings);
-  $('#syncClockBtn').addEventListener('click', () => syncClock(true));
-  $('#clearDailyBtn').addEventListener('click', resetCurrentDay);
-  $('#clearWeeklyBtn').addEventListener('click', resetCurrentWeek);
-  $('#exportBtn').addEventListener('click', exportData);
-  $('#importFile').addEventListener('change', (event) => importData(event.target.files[0]));
+  const dailyForm = $('#dailyForm');
+  if (dailyForm) {
+    dailyForm.addEventListener('input', autosaveCurrentDay);
+    dailyForm.addEventListener('change', autosaveCurrentDay);
+    dailyForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      autosaveCurrentDay();
+      showToast('Текущий день сохранён');
+    });
+  }
+  const weeklyForm = $('#weeklyForm');
+  if (weeklyForm) {
+    weeklyForm.addEventListener('input', autosaveCurrentWeek);
+    weeklyForm.addEventListener('change', autosaveCurrentWeek);
+    weeklyForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      autosaveCurrentWeek();
+      showToast('Текущая неделя зафиксирована');
+    });
+  }
+  if ($('#settingsForm')) $('#settingsForm').addEventListener('submit', saveSettings);
+  if ($('#syncClockBtn')) $('#syncClockBtn').addEventListener('click', () => syncClock(true));
+  if ($('#clearDailyBtn')) $('#clearDailyBtn').addEventListener('click', resetCurrentDay);
+  if ($('#clearWeeklyBtn')) $('#clearWeeklyBtn').addEventListener('click', resetCurrentWeek);
+  if ($('#exportBtn')) $('#exportBtn').addEventListener('click', exportData);
+  if ($('#importFile')) $('#importFile').addEventListener('change', (event) => importData(event.target.files[0]));
+  if ($('#questImportFile')) $('#questImportFile').addEventListener('change', (event) => importQuestPack(event.target.files[0]));
+  if ($('#downloadQuestTemplateBtn')) $('#downloadQuestTemplateBtn').addEventListener('click', downloadQuestTemplate);
+  if ($('#resetQuestConfigBtn')) $('#resetQuestConfigBtn').addEventListener('click', resetQuestConfig);
   if ($('#copyPromptBtn') && $('#chatPrompt')) $('#copyPromptBtn').addEventListener('click', () => copyText($('#chatPrompt').textContent, 'Промпт скопирован'));
   $('#copySummaryBtn').addEventListener('click', () => copyText(buildHistorySummary(), 'Сводка скопирована'));
   $('#history').addEventListener('click', handleHistoryClick);
@@ -1249,16 +1417,19 @@ function bindEvents() {
   $('#resetBtn').addEventListener('click', () => {
     const ok = window.confirm('Стереть все дни, недели и настройки PRIME RPG?');
     if (!ok) return;
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LEGACY_STORAGE_KEY_V3);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-    localStorage.removeItem(LEGACY_STORAGE_KEY_V1);
+    Object.keys(localStorage).filter((key) => key.startsWith('prime-rpg')).forEach((key) => localStorage.removeItem(key));
+    if ('caches' in window) caches.keys().then((keys) => keys.filter((key) => key.startsWith('prime-rpg')).forEach((key) => caches.delete(key))).catch(() => {});
     state = defaultState();
+    state.days = [];
+    state.weeks = [];
+    state.currentDay = createDayDraft(state.system.currentDate, 1);
+    state.currentWeek = createWeekDraft(state.system.currentWeekId, state.profile.startDate);
     saveState();
+    renderDailyQuests();
     fillDailyForm();
     fillWeeklyForm();
     renderAll();
-    showToast('Система сброшена');
+    showToast('Всё сброшено: история очищена');
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) syncClock(false);
