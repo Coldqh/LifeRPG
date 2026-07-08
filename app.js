@@ -8,8 +8,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.1';
-const APP_CACHE_QUERY = '1.1.0';
+const APP_VERSION = 'v1.2';
+const APP_CACHE_QUERY = '1.2.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -523,7 +523,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.1.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.2.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -671,7 +671,6 @@ function renderDailyQuests() {
     <article class="quest-card">
       <header>
         <div>
-          <p class="eyebrow"><span class="emoji">${categoryIcon(quest.stat)}</span> ${escapeHTML(quest.stat)}</p>
           <h3><span class="card-art">${categoryIcon(quest.title)}</span>${escapeHTML(quest.title)}</h3>
         </div>
         <strong class="quest-xp">+${quest.maxXp}</strong>
@@ -693,13 +692,12 @@ function renderWeeklyBosses() {
     <article class="quest-card">
       <header>
         <div>
-          <p class="eyebrow"><span class="emoji">${categoryIcon(boss.stat)}</span> ${escapeHTML(boss.stat)}</p>
           <h3><span class="card-art">${categoryIcon(boss.title)}</span>${escapeHTML(boss.title)}</h3>
         </div>
         <strong class="quest-xp">+${boss.maxXp}</strong>
       </header>
       <div class="checkbox-grid">
-        ${boss.items.map((item) => checkRow(`b_${item.id}`, item.text, item.xp, categoryIcon(boss.title))).join('')}
+        ${boss.items.map((item) => checkRow(`b_${item.id}`, item.text, item.xp)).join('')}
       </div>
     </article>
   `).join('');
@@ -1031,7 +1029,7 @@ function updateClockUI() {
   if ($('#currentDayMeta')) $('#currentDayMeta').textContent = dayText;
   if ($('#currentWeekMeta')) $('#currentWeekMeta').textContent = weekText;
   if ($('#rolloverMeta')) $('#rolloverMeta').textContent = nextText;
-  if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `Квесты текущего дня — ${formatDate(today)}`;
+  if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `День — ${formatDate(today)}`;
   if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Неделя — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
 }
 

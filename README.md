@@ -1,4 +1,4 @@
-# PRIME RPG v1.1
+# PRIME RPG v1.2
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -17,6 +17,14 @@
 - кнопка `Обновить версию` для телефона;
 - in-app уведомление о новой версии;
 - PWA/service worker с network-first стратегией.
+
+
+## v1.2
+
+- вкладка `Квесты` переименована в `День`;
+- убраны дубли эмодзи в заголовках категорий;
+- недельные строки больше не повторяют общий значок категории;
+- добавлены лёгкие анимации: вход карточек, мягкий hover/tap, плавные прогресс-бары, подсветка отмеченных строк.
 
 ## Обновление версии
 
@@ -46,14 +54,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.1"
+git commit -m "Update PRIME RPG v1.2"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.1.0
+https://coldqh.github.io/LifeRPG/?v=1.2.0
 ```
 
 ## Quest pack

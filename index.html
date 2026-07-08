@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — компактный habit tracker для личной RPG-системы: квесты, XP, ранги, недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=1.1.0" />
+  <link rel="manifest" href="manifest.json?v=1.2.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=1.1.0" />
+  <link rel="stylesheet" href="styles.css?v=1.2.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,7 +17,7 @@
         <p class="eyebrow">habit tracker</p>
         <h1><span aria-hidden="true">⚡</span> PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v1.1</span>
+          <span id="appVersionValue">v1.2</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -44,7 +44,7 @@
 
     <nav class="tabbar" aria-label="Главная навигация">
       <button class="tab-btn active" data-tab="dashboard" type="button">👤 Профиль</button>
-      <button class="tab-btn" data-tab="daily" type="button">✅ Квесты</button>
+      <button class="tab-btn" data-tab="daily" type="button">📅 День</button>
       <button class="tab-btn" data-tab="weekly" type="button">📅 Неделя</button>
       <button class="tab-btn" data-tab="history" type="button">📈 История</button>
       <button class="tab-btn" data-tab="settings" type="button">⚙️ Настройки</button>
@@ -128,7 +128,7 @@
             <div class="section-head">
               <div>
                 <p class="eyebrow">✅ Daily quests</p>
-                <h2 id="dailyLiveTitle">Квесты текущего дня</h2>
+                <h2 id="dailyLiveTitle">День</h2>
               </div>
             </div>
           </section>
@@ -253,6 +253,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=1.1.0"></script>
+  <script src="app.js?v=1.2.0"></script>
 </body>
 </html>
