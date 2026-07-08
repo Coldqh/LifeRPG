@@ -399,3 +399,20 @@ input:focus, textarea:focus, select:focus { border-color: rgba(159, 232, 112, .7
   .rank-badge { width: 100%; text-align: center; }
   .sticky-result { bottom: 8px; }
 }
+
+.clock-panel {
+  margin-bottom: 14px;
+  background: linear-gradient(180deg, rgba(159, 232, 112, .08), rgba(19, 28, 41, .92));
+}
+
+.mini-stack {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.mini-stack strong {
+  color: var(--accent);
+  font-size: .92rem;
+}

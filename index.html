@@ -18,6 +18,7 @@
         <h1>PRIME RPG</h1>
       </div>
       <div class="top-actions">
+        <button class="ghost-btn" id="syncClockBtn" type="button">Синхронизация</button>
         <button class="ghost-btn" id="exportBtn" type="button">Экспорт</button>
         <label class="ghost-btn file-label" for="importFile">Импорт</label>
         <input id="importFile" type="file" accept="application/json" hidden />
@@ -38,10 +39,24 @@
           <div>
             <p class="eyebrow">Season 1</p>
             <h2 id="seasonTitle">Москва / Сушка / Работа</h2>
-            <p class="muted">Минимум: BODY, WORK, CREATOR, CALM. Всё остальное — усиление билда.</p>
+            <p class="muted">Минимум: BODY, WORK, CREATOR, CALM. День и неделя меняются автоматически по Москве.</p>
           </div>
           <div class="rank-badge" id="statusRank">Ordinary</div>
         </div>
+
+        <section class="panel clock-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Moscow clock</p>
+              <h3 id="currentDayMeta">День №1 • — • МСК</h3>
+              <p id="currentWeekMeta" class="muted">Неделя №1</p>
+            </div>
+            <div class="mini-stack">
+              <strong id="rolloverMeta">Следующая смена дня: 00:00 МСК</strong>
+              <span class="muted">галочки сохраняются сразу</span>
+            </div>
+          </div>
+        </section>
 
         <section class="grid stats-grid">
           <article class="stat-card">
@@ -53,15 +68,15 @@
           <article class="stat-card">
             <span>Всего XP</span>
             <strong id="totalXpValue">0</strong>
-            <small>общий прогресс</small>
+            <small>live-прогресс</small>
           </article>
           <article class="stat-card">
-            <span>Последний день</span>
+            <span>Текущий день</span>
             <strong id="lastDayRank">—</strong>
-            <small id="lastDayXp">нет отчёта</small>
+            <small id="lastDayXp">0 XP</small>
           </article>
           <article class="stat-card">
-            <span>Неделя</span>
+            <span>Текущая неделя</span>
             <strong id="weekXpValue">0 XP</strong>
             <small id="weekReportsValue">0 отчётов</small>
           </article>
@@ -104,21 +119,21 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Daily report</p>
-                <h2>Отчёт дня</h2>
+                <p class="eyebrow">Live daily report</p>
+                <h2 id="dailyLiveTitle">Текущий день</h2>
+                <p class="muted">Не вводишь дату вручную. Отмечаешь галочки — система сохраняет live. В 00:00 МСК день закрывается сам.</p>
               </div>
-              <button class="ghost-btn" id="fillTodayBtn" type="button">Сегодня</button>
             </div>
 
             <div class="form-grid">
-              <label>Дата<input name="date" type="date" required /></label>
-              <label>День №<input name="dayNumber" type="number" min="1" placeholder="1" /></label>
               <label>Вес<input name="weight" type="number" step="0.1" placeholder="85.0" /></label>
               <label>Талия<input name="waist" type="number" step="0.1" placeholder="82" /></label>
               <label>Сон<input name="sleep" type="number" step="0.25" placeholder="7" /></label>
               <label>Шаги<input name="steps" type="number" step="100" placeholder="12000" /></label>
               <label>Энергетик<input name="energyDrink" type="number" min="0" step="1" placeholder="0" /></label>
               <label>Инста, мин<input name="instagram" type="number" min="0" step="1" placeholder="0" /></label>
+              <label>Настроение 1–10<input name="mood" type="number" min="1" max="10" step="1" placeholder="7" /></label>
+              <label>Тревога 1–10<input name="anxiety" type="number" min="1" max="10" step="1" placeholder="3" /></label>
             </div>
           </section>
 
@@ -157,13 +172,13 @@
 
           <section class="panel result-panel sticky-result">
             <div>
-              <p class="eyebrow">Calculated</p>
+              <p class="eyebrow">Calculated live</p>
               <h3 id="dailyResultTitle">0 XP — Broken Day</h3>
               <p id="dailyResultDetails" class="muted">Отмечай квесты, система считает день.</p>
             </div>
             <div class="form-actions">
-              <button class="primary-btn" type="submit">Сохранить день</button>
-              <button class="ghost-btn" id="clearDailyBtn" type="button">Очистить</button>
+              <button class="primary-btn" type="submit">Сохранить сейчас</button>
+              <button class="ghost-btn" id="clearDailyBtn" type="button">Очистить день</button>
             </div>
           </section>
         </form>
@@ -174,20 +189,10 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Weekly report</p>
-                <h2>Отчёт недели</h2>
+                <p class="eyebrow">Live weekly report</p>
+                <h2 id="weeklyLiveTitle">Текущая неделя</h2>
+                <p class="muted">Боссы недели тоже live. В ночь с воскресенья на понедельник неделя закрывается и уходит в историю.</p>
               </div>
-              <button class="ghost-btn" id="fillWeekBtn" type="button">Текущая</button>
-            </div>
-            <div class="form-grid">
-              <label>Неделя №<input name="weekNumber" type="number" min="1" required /></label>
-              <label>Дата начала<input name="startDate" type="date" /></label>
-              <label>Дата конца<input name="endDate" type="date" /></label>
-              <label>Вес начало<input name="weightStart" type="number" step="0.1" /></label>
-              <label>Вес конец<input name="weightEnd" type="number" step="0.1" /></label>
-              <label>Талия начало<input name="waistStart" type="number" step="0.1" /></label>
-              <label>Талия конец<input name="waistEnd" type="number" step="0.1" /></label>
-              <label>Средние шаги<input name="avgSteps" type="number" step="100" /></label>
             </div>
           </section>
 
@@ -216,13 +221,13 @@
 
           <section class="panel result-panel sticky-result">
             <div>
-              <p class="eyebrow">Calculated</p>
+              <p class="eyebrow">Calculated live</p>
               <h3 id="weeklyResultTitle">0 XP — неделя не закрыта</h3>
               <p id="weeklyResultDetails" class="muted">Отмечай условия боссов.</p>
             </div>
             <div class="form-actions">
-              <button class="primary-btn" type="submit">Сохранить неделю</button>
-              <button class="ghost-btn" id="clearWeeklyBtn" type="button">Очистить</button>
+              <button class="primary-btn" type="submit">Сохранить сейчас</button>
+              <button class="ghost-btn" id="clearWeeklyBtn" type="button">Очистить неделю</button>
             </div>
           </section>
         </form>

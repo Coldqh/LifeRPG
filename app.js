@@ -1,9 +1,11 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v1';
+const STORAGE_KEY = 'prime-rpg-state-v2';
+const LEGACY_STORAGE_KEY = 'prime-rpg-state-v1';
+const MOSCOW_TZ = 'Europe/Moscow';
+const ROLLOVER_CHECK_MS = 30 * 1000;
 
 const STAT_KEYS = ['BODY', 'FIGHTER', 'MIND', 'WORK', 'CREATOR', 'CALM', 'DISCIPLINE', 'CHARISMA', 'MONEY'];
-
 const LEVELS = [0, 1000, 2200, 3600, 5200, 7000, 9000, 11500, 14500, 18000, 22000, 27000, 33000, 40000];
 
 const DAILY_QUESTS = [
@@ -150,21 +152,32 @@ const WEEKLY_BOSSES = [
   }
 ];
 
+const DAILY_METRIC_FIELDS = ['weight', 'waist', 'sleep', 'steps', 'energyDrink', 'instagram', 'mood', 'anxiety'];
 const NOTE_FIELDS = ['workDone', 'workLearned', 'workStuck', 'creatorProject', 'creatorDone', 'calmAnnoyed', 'calmGood', 'mindNote', 'charismaNote', 'moneyNote'];
-const DAILY_METRIC_FIELDS = ['date', 'dayNumber', 'weight', 'waist', 'sleep', 'steps', 'energyDrink', 'instagram'];
 const WEEKLY_NOTE_FIELDS = ['workTasks', 'workInsight', 'creatorProject', 'creatorResult', 'calmTriggers', 'calmHelped', 'socialContacts', 'moneyInsight', 'weekSummary', 'improve'];
-const WEEKLY_METRIC_FIELDS = ['weekNumber', 'startDate', 'endDate', 'weightStart', 'weightEnd', 'waistStart', 'waistEnd', 'avgSteps'];
 
 let state = loadState();
+let suppressAutosave = false;
 
 function defaultState() {
+  const today = todayMoscowISO();
+  const weekId = getWeekStart(today);
   return {
+    version: 2,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
       seasonGoal: 'стабильный режим: тело, работа, проекты, спокойствие',
-      startDate: todayISO()
+      startDate: today
     },
+    system: {
+      currentDate: today,
+      currentWeekId: weekId,
+      dayCounter: 1,
+      lastSyncAt: nowMoscowStamp()
+    },
+    currentDay: createDayDraft(today, 1),
+    currentWeek: createWeekDraft(weekId),
     days: [],
     weeks: []
   };
@@ -172,33 +185,123 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
-    return {
-      ...defaultState(),
-      ...parsed,
-      profile: { ...defaultState().profile, ...(parsed.profile || {}) },
-      days: Array.isArray(parsed.days) ? parsed.days : [],
-      weeks: Array.isArray(parsed.weeks) ? parsed.weeks : []
-    };
+    return migrateState(parsed);
   } catch (error) {
     console.error(error);
     return defaultState();
   }
 }
 
+function migrateState(parsed) {
+  const base = defaultState();
+  const stateLike = {
+    ...base,
+    ...parsed,
+    version: 2,
+    profile: { ...base.profile, ...(parsed.profile || {}) },
+    system: { ...base.system, ...(parsed.system || {}) },
+    days: Array.isArray(parsed.days) ? parsed.days : [],
+    weeks: Array.isArray(parsed.weeks) ? parsed.weeks : []
+  };
+
+  if (!stateLike.currentDay) {
+    const today = todayMoscowISO();
+    const oldToday = stateLike.days.find((day) => day.id === today || day.metrics?.date === today);
+    stateLike.currentDay = oldToday ? dayToDraft(oldToday) : createDayDraft(today, getNextDayNumberFromDays(stateLike.days));
+    stateLike.days = stateLike.days.filter((day) => (day.id !== today && day.metrics?.date !== today));
+  }
+  if (!stateLike.currentWeek) stateLike.currentWeek = createWeekDraft(getWeekStart(todayMoscowISO()));
+  stateLike.system.currentDate = stateLike.currentDay.date || todayMoscowISO();
+  stateLike.system.currentWeekId = stateLike.currentWeek.weekId || getWeekStart(todayMoscowISO());
+  stateLike.system.dayCounter = Math.max(
+    Number(stateLike.system.dayCounter || 1),
+    getNextDayNumberFromDays(stateLike.days),
+    Number(stateLike.currentDay.dayNumber || 1)
+  );
+  return stateLike;
+}
+
 function saveState() {
+  state.version = 2;
+  state.system.lastSyncAt = nowMoscowStamp();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function $(selector, root = document) { return root.querySelector(selector); }
 function $$(selector, root = document) { return Array.from(root.querySelectorAll(selector)); }
 
-function todayISO() {
-  const date = new Date();
-  const tz = date.getTimezoneOffset() * 60000;
-  return new Date(date - tz).toISOString().slice(0, 10);
+function getMoscowParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MOSCOW_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+  return Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+}
+
+function todayMoscowISO(date = new Date()) {
+  const p = getMoscowParts(date);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+function nowMoscowStamp(date = new Date()) {
+  const p = getMoscowParts(date);
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second} МСК`;
+}
+
+function moscowTimeText() {
+  const p = getMoscowParts();
+  return `${p.hour}:${p.minute}:${p.second} МСК`;
+}
+
+function parseISODate(iso) {
+  const [year, month, day] = String(iso).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function toISODate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(iso, amount) {
+  const date = parseISODate(iso);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return toISODate(date);
+}
+
+function diffDays(a, b) {
+  return Math.round((parseISODate(b) - parseISODate(a)) / 86400000);
+}
+
+function getWeekDay(iso) {
+  const day = parseISODate(iso).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+function getWeekStart(iso) {
+  return addDays(iso, -(getWeekDay(iso) - 1));
+}
+
+function getWeekEnd(weekStart) {
+  return addDays(weekStart, 6);
+}
+
+function getSeasonWeekNumber(weekStart = getWeekStart(todayMoscowISO())) {
+  const seasonStartWeek = getWeekStart(state.profile?.startDate || todayMoscowISO());
+  return Math.max(1, Math.floor(diffDays(seasonStartWeek, weekStart) / 7) + 1);
+}
+
+function getNextDayNumberFromDays(days = state.days) {
+  const maxClosed = days.reduce((value, day) => Math.max(value, Number(day.metrics?.dayNumber || day.dayNumber || 0)), 0);
+  return maxClosed + 1;
 }
 
 function toNumber(value) {
@@ -208,21 +311,121 @@ function toNumber(value) {
 }
 
 function checked(form, name) {
-  const input = form.elements[name];
+  const input = form?.elements?.[name];
   return Boolean(input && input.checked);
 }
 
 function setChecked(form, name, value) {
-  const input = form.elements[name];
+  const input = form?.elements?.[name];
   if (input) input.checked = Boolean(value);
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
 function showToast(message) {
   const toast = $('#toast');
+  if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
   window.clearTimeout(showToast.timeout);
   showToast.timeout = window.setTimeout(() => toast.classList.remove('show'), 2300);
+}
+
+function createDayDraft(date, dayNumber) {
+  return {
+    id: date,
+    date,
+    dayNumber,
+    createdAt: nowMoscowStamp(),
+    metrics: {
+      weight: '', waist: '', sleep: '', steps: '', energyDrink: '', instagram: '', mood: '', anxiety: ''
+    },
+    notes: {},
+    completed: [],
+    penalties: [],
+    status: 'active'
+  };
+}
+
+function createWeekDraft(weekId) {
+  return {
+    id: weekId,
+    weekId,
+    weekNumber: getSeasonWeekNumber(weekId),
+    startDate: weekId,
+    endDate: getWeekEnd(weekId),
+    createdAt: nowMoscowStamp(),
+    notes: {},
+    completed: [],
+    status: 'active'
+  };
+}
+
+function dayToDraft(day) {
+  return {
+    id: day.metrics?.date || day.date || day.id,
+    date: day.metrics?.date || day.date || day.id,
+    dayNumber: Number(day.metrics?.dayNumber || day.dayNumber || getNextDayNumberFromDays()),
+    createdAt: day.createdAt || nowMoscowStamp(),
+    metrics: { ...day.metrics },
+    notes: { ...day.notes },
+    completed: [...(day.completed || [])],
+    penalties: [...(day.penalties || [])],
+    status: 'active'
+  };
+}
+
+function calculateDailyFromDraft(draft = state.currentDay) {
+  const completedSet = new Set(draft.completed || []);
+  const penaltySet = new Set(draft.penalties || []);
+  const categoryXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
+  const questXp = {};
+
+  DAILY_QUESTS.forEach((quest) => {
+    let sum = 0;
+    quest.items.forEach((item) => {
+      if (completedSet.has(item.id)) {
+        sum += item.xp;
+        categoryXp[item.stat] = (categoryXp[item.stat] || 0) + item.xp;
+      }
+    });
+    questXp[quest.key] = Math.min(sum, quest.maxXp);
+  });
+
+  const positiveXp = Object.values(questXp).reduce((sum, value) => sum + value, 0);
+  const penaltyXp = PENALTIES.reduce((sum, item) => penaltySet.has(item.id) ? sum + item.xp : sum, 0);
+  const netXp = positiveXp + penaltyXp;
+  return {
+    questXp,
+    categoryXp,
+    positiveXp,
+    penaltyXp,
+    netXp,
+    rank: getDailyRank(netXp),
+    completed: [...completedSet],
+    penalties: [...penaltySet]
+  };
+}
+
+function calculateWeeklyFromDraft(draft = state.currentWeek) {
+  const completedSet = new Set(draft.completed || []);
+  const bossXp = {};
+  const categoryXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
+
+  WEEKLY_BOSSES.forEach((boss) => {
+    let sum = 0;
+    boss.items.forEach((item) => {
+      if (completedSet.has(item.id)) sum += item.xp;
+    });
+    const capped = Math.min(sum, boss.maxXp);
+    bossXp[boss.key] = capped;
+    categoryXp[boss.stat] = (categoryXp[boss.stat] || 0) + capped;
+  });
+
+  const totalXp = Object.values(bossXp).reduce((sum, value) => sum + value, 0);
+  return { bossXp, categoryXp, totalXp, completed: [...completedSet] };
 }
 
 function getDailyRank(xp) {
@@ -257,12 +460,8 @@ function getStatusRank(totalXp) {
 
 function formatDate(iso) {
   if (!iso) return '—';
-  const [year, month, day] = iso.split('-');
+  const [year, month, day] = String(iso).split('-');
   return `${day}.${month}.${year}`;
-}
-
-function escapeHTML(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
 function renderDailyQuests() {
@@ -317,89 +516,136 @@ function checkRow(name, text, xp) {
   `;
 }
 
-function calculateDaily(form = $('#dailyForm')) {
-  const categoryXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
-  const questXp = {};
-  const completed = [];
-
-  DAILY_QUESTS.forEach((quest) => {
-    let sum = 0;
-    quest.items.forEach((item) => {
-      if (checked(form, `q_${item.id}`)) {
-        sum += item.xp;
-        categoryXp[item.stat] = (categoryXp[item.stat] || 0) + item.xp;
-        completed.push(item.id);
-      }
-    });
-    questXp[quest.key] = Math.min(sum, quest.maxXp);
+function fillDailyForm() {
+  const form = $('#dailyForm');
+  if (!form) return;
+  suppressAutosave = true;
+  form.reset();
+  const draft = state.currentDay;
+  DAILY_METRIC_FIELDS.forEach((field) => {
+    if (form.elements[field]) form.elements[field].value = draft.metrics?.[field] ?? '';
   });
+  NOTE_FIELDS.forEach((field) => {
+    if (form.elements[field]) form.elements[field].value = draft.notes?.[field] ?? '';
+  });
+  DAILY_QUESTS.flatMap((quest) => quest.items).forEach((item) => setChecked(form, `q_${item.id}`, draft.completed?.includes(item.id)));
+  PENALTIES.forEach((item) => setChecked(form, `p_${item.id}`, draft.penalties?.includes(item.id)));
+  suppressAutosave = false;
+  updateDailyPreview();
+  updateClockUI();
+}
 
-  const positiveXp = Object.values(questXp).reduce((sum, value) => sum + value, 0);
-  const penalties = [];
-  const penaltyXp = PENALTIES.reduce((sum, item) => {
-    if (checked(form, `p_${item.id}`)) {
-      penalties.push(item.id);
-      return sum + item.xp;
-    }
-    return sum;
-  }, 0);
+function fillWeeklyForm() {
+  const form = $('#weeklyForm');
+  if (!form) return;
+  suppressAutosave = true;
+  form.reset();
+  const draft = state.currentWeek;
+  WEEKLY_NOTE_FIELDS.forEach((field) => {
+    if (form.elements[field]) form.elements[field].value = draft.notes?.[field] ?? '';
+  });
+  WEEKLY_BOSSES.flatMap((boss) => boss.items).forEach((item) => setChecked(form, `b_${item.id}`, draft.completed?.includes(item.id)));
+  suppressAutosave = false;
+  updateWeeklyPreview();
+  updateClockUI();
+}
 
-  const netXp = positiveXp + penaltyXp;
-  return {
-    questXp,
-    categoryXp,
-    positiveXp,
-    penaltyXp,
-    netXp,
-    rank: getDailyRank(netXp),
-    completed,
-    penalties
+function collectCurrentDayFromForm() {
+  const form = $('#dailyForm');
+  const draft = {
+    ...state.currentDay,
+    id: state.system.currentDate,
+    date: state.system.currentDate,
+    dayNumber: state.system.dayCounter,
+    metrics: {},
+    notes: {},
+    completed: [],
+    penalties: []
   };
+
+  DAILY_METRIC_FIELDS.forEach((field) => {
+    const value = form.elements[field]?.value ?? '';
+    draft.metrics[field] = toNumber(value) ?? value;
+  });
+  NOTE_FIELDS.forEach((field) => {
+    draft.notes[field] = form.elements[field]?.value?.trim() || '';
+  });
+  DAILY_QUESTS.flatMap((quest) => quest.items).forEach((item) => {
+    if (checked(form, `q_${item.id}`)) draft.completed.push(item.id);
+  });
+  PENALTIES.forEach((item) => {
+    if (checked(form, `p_${item.id}`)) draft.penalties.push(item.id);
+  });
+  return draft;
+}
+
+function collectCurrentWeekFromForm() {
+  const form = $('#weeklyForm');
+  const draft = {
+    ...state.currentWeek,
+    id: state.system.currentWeekId,
+    weekId: state.system.currentWeekId,
+    weekNumber: getSeasonWeekNumber(state.system.currentWeekId),
+    startDate: state.system.currentWeekId,
+    endDate: getWeekEnd(state.system.currentWeekId),
+    notes: {},
+    completed: []
+  };
+
+  WEEKLY_NOTE_FIELDS.forEach((field) => {
+    draft.notes[field] = form.elements[field]?.value?.trim() || '';
+  });
+  WEEKLY_BOSSES.flatMap((boss) => boss.items).forEach((item) => {
+    if (checked(form, `b_${item.id}`)) draft.completed.push(item.id);
+  });
+  return draft;
+}
+
+function autosaveCurrentDay() {
+  if (suppressAutosave) return;
+  state.currentDay = collectCurrentDayFromForm();
+  saveState();
+  updateDailyPreview();
+  renderDashboard();
+}
+
+function autosaveCurrentWeek() {
+  if (suppressAutosave) return;
+  state.currentWeek = collectCurrentWeekFromForm();
+  saveState();
+  updateWeeklyPreview();
+  renderDashboard();
 }
 
 function updateDailyPreview() {
-  const result = calculateDaily();
+  const result = calculateDailyFromDraft(state.currentDay);
   $('#dailyResultTitle').textContent = `${result.netXp} XP — ${result.rank}`;
-  $('#dailyResultDetails').textContent = `Плюс: ${result.positiveXp} XP. Штрафы: ${result.penaltyXp} XP. База BODY/WORK/CREATOR/CALM: ${['body', 'work', 'creator', 'calm'].map((key) => result.questXp[key]).reduce((a, b) => a + b, 0)} / 150 XP.`;
-}
-
-function calculateWeekly(form = $('#weeklyForm')) {
-  const bossXp = {};
-  const categoryXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
-  const completed = [];
-
-  WEEKLY_BOSSES.forEach((boss) => {
-    let sum = 0;
-    boss.items.forEach((item) => {
-      if (checked(form, `b_${item.id}`)) {
-        sum += item.xp;
-        completed.push(item.id);
-      }
-    });
-    const capped = Math.min(sum, boss.maxXp);
-    bossXp[boss.key] = capped;
-    categoryXp[boss.stat] = (categoryXp[boss.stat] || 0) + capped;
-  });
-
-  const totalXp = Object.values(bossXp).reduce((sum, value) => sum + value, 0);
-  return { bossXp, categoryXp, totalXp, completed };
+  $('#dailyResultDetails').textContent = `Live-день: ${formatDate(state.currentDay.date)}. Плюс: ${result.positiveXp} XP. Штрафы: ${result.penaltyXp} XP. База BODY/WORK/CREATOR/CALM: ${['body', 'work', 'creator', 'calm'].map((key) => result.questXp[key] || 0).reduce((a, b) => a + b, 0)} / 150 XP.`;
 }
 
 function updateWeeklyPreview() {
-  const result = calculateWeekly();
+  const result = calculateWeeklyFromDraft(state.currentWeek);
   const passed = result.totalXp >= 500;
-  $('#weeklyResultTitle').textContent = `${result.totalXp} XP — ${passed ? 'неделя закрыта' : 'неделя не закрыта'}`;
-  $('#weeklyResultDetails').textContent = `Максимум недели: 800 XP. Боссы: BODY ${result.bossXp.bodyBoss || 0}, WORK ${result.bossXp.workBoss || 0}, CREATOR ${result.bossXp.creatorBoss || 0}, CALM ${result.bossXp.calmBoss || 0}, SOCIAL ${result.bossXp.socialBoss || 0}, MONEY ${result.bossXp.moneyBoss || 0}.`;
+  $('#weeklyResultTitle').textContent = `${result.totalXp} XP — ${passed ? 'неделя закрывается' : 'неделя не закрыта'}`;
+  $('#weeklyResultDetails').textContent = `Live-неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}. Боссы: BODY ${result.bossXp.bodyBoss || 0}, WORK ${result.bossXp.workBoss || 0}, CREATOR ${result.bossXp.creatorBoss || 0}, CALM ${result.bossXp.calmBoss || 0}, SOCIAL ${result.bossXp.socialBoss || 0}, MONEY ${result.bossXp.moneyBoss || 0}.`;
 }
 
-function collectDailyData() {
-  const form = $('#dailyForm');
-  const calc = calculateDaily(form);
-  const data = {
-    id: form.elements.date.value || todayISO(),
-    createdAt: new Date().toISOString(),
-    metrics: {},
-    notes: {},
+function finalizeDay(draft, reason = 'midnight') {
+  if (!draft || !draft.date) return null;
+  const calc = calculateDailyFromDraft(draft);
+  const day = {
+    id: draft.date,
+    date: draft.date,
+    weekId: getWeekStart(draft.date),
+    createdAt: draft.createdAt || nowMoscowStamp(),
+    closedAt: nowMoscowStamp(),
+    closedBy: reason,
+    metrics: {
+      date: draft.date,
+      dayNumber: draft.dayNumber,
+      ...(draft.metrics || {})
+    },
+    notes: { ...(draft.notes || {}) },
     completed: calc.completed,
     penalties: calc.penalties,
     questXp: calc.questXp,
@@ -409,217 +655,280 @@ function collectDailyData() {
     netXp: calc.netXp,
     rank: calc.rank
   };
-
-  DAILY_METRIC_FIELDS.forEach((field) => {
-    const value = form.elements[field]?.value ?? '';
-    data.metrics[field] = ['date'].includes(field) ? value : toNumber(value) ?? value;
-  });
-
-  NOTE_FIELDS.forEach((field) => {
-    data.notes[field] = form.elements[field]?.value?.trim() || '';
-  });
-
-  return data;
+  state.days = state.days.filter((item) => item.id !== day.id && item.metrics?.date !== day.id);
+  state.days.push(day);
+  state.days.sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
+  return day;
 }
 
-function saveDaily(event) {
-  event.preventDefault();
-  const data = collectDailyData();
-  if (!data.metrics.date) data.metrics.date = todayISO();
-  data.id = data.metrics.date;
-  state.days = state.days.filter((day) => day.id !== data.id);
-  state.days.push(data);
-  state.days.sort((a, b) => (a.metrics.date || '').localeCompare(b.metrics.date || ''));
-  saveState();
-  renderAll();
-  showToast(`День сохранён: ${data.netXp} XP — ${data.rank}`);
+function createMissedDay(date, dayNumber) {
+  const draft = createDayDraft(date, dayNumber);
+  draft.penalties = ['missed_report'];
+  draft.notes = {
+    calmAnnoyed: 'Автозакрытие: день пропущен.',
+    calmGood: 'Система сохранила цепочку дней.'
+  };
+  return draft;
 }
 
-function collectWeeklyData() {
-  const form = $('#weeklyForm');
-  const calc = calculateWeekly(form);
-  const weekNumber = form.elements.weekNumber.value || getSeasonWeekNumber();
-  const data = {
-    id: String(weekNumber),
-    createdAt: new Date().toISOString(),
-    metrics: {},
-    notes: {},
+function finalizeWeek(draft, reason = 'monday-rollover') {
+  if (!draft || !draft.weekId) return null;
+  const calc = calculateWeeklyFromDraft(draft);
+  const days = getClosedDaysInWeek(draft.weekId);
+  const metrics = buildWeekMetrics(draft, days);
+  const notes = {
+    ...(draft.notes || {}),
+    weekSummary: draft.notes?.weekSummary || buildAutoWeekSummary(days, calc),
+    improve: draft.notes?.improve || buildAutoWeekImprove(days)
+  };
+  const week = {
+    id: draft.weekId,
+    weekId: draft.weekId,
+    weekNumber: getSeasonWeekNumber(draft.weekId),
+    createdAt: draft.createdAt || nowMoscowStamp(),
+    closedAt: nowMoscowStamp(),
+    closedBy: reason,
+    metrics,
+    notes,
     completed: calc.completed,
     bossXp: calc.bossXp,
     categoryXp: calc.categoryXp,
     totalXp: calc.totalXp,
-    result: calc.totalXp >= 500 ? 'passed' : 'failed'
+    dailyXp: days.reduce((sum, day) => sum + Number(day.netXp || 0), 0),
+    dayCount: days.length,
+    result: isWeeklyMinimumPassed(days, draft) ? 'passed' : 'failed'
   };
-
-  WEEKLY_METRIC_FIELDS.forEach((field) => {
-    const value = form.elements[field]?.value ?? '';
-    data.metrics[field] = ['startDate', 'endDate'].includes(field) ? value : toNumber(value) ?? value;
-  });
-
-  WEEKLY_NOTE_FIELDS.forEach((field) => {
-    data.notes[field] = form.elements[field]?.value?.trim() || '';
-  });
-
-  return data;
+  state.weeks = state.weeks.filter((item) => item.id !== week.id && item.weekId !== week.id);
+  state.weeks.push(week);
+  state.weeks.sort((a, b) => (a.weekId || a.id || '').localeCompare(b.weekId || b.id || ''));
+  return week;
 }
 
-function saveWeekly(event) {
-  event.preventDefault();
-  const data = collectWeeklyData();
-  state.weeks = state.weeks.filter((week) => week.id !== data.id);
-  state.weeks.push(data);
-  state.weeks.sort((a, b) => Number(a.id) - Number(b.id));
-  saveState();
-  renderAll();
-  showToast(`Неделя сохранена: ${data.totalXp} XP`);
-}
-
-function fillDailyForm(day) {
-  const form = $('#dailyForm');
-  form.reset();
-  const source = day || {
-    metrics: {
-      date: todayISO(),
-      dayNumber: getNextDayNumber(),
-      energyDrink: '',
-      instagram: ''
-    },
-    notes: {},
-    completed: [],
-    penalties: []
+function buildWeekMetrics(draft, days) {
+  const weights = days.map((day) => toNumber(day.metrics?.weight)).filter((value) => value !== null);
+  const waists = days.map((day) => toNumber(day.metrics?.waist)).filter((value) => value !== null);
+  const steps = days.map((day) => toNumber(day.metrics?.steps)).filter((value) => value !== null);
+  const sleeps = days.map((day) => toNumber(day.metrics?.sleep)).filter((value) => value !== null);
+  const anxiety = days.map((day) => toNumber(day.metrics?.anxiety)).filter((value) => value !== null);
+  return {
+    weekNumber: getSeasonWeekNumber(draft.weekId),
+    startDate: draft.weekId,
+    endDate: getWeekEnd(draft.weekId),
+    weightStart: weights[0] ?? '',
+    weightEnd: weights[weights.length - 1] ?? '',
+    waistStart: waists[0] ?? '',
+    waistEnd: waists[waists.length - 1] ?? '',
+    avgSteps: average(steps),
+    avgSleep: average(sleeps),
+    avgAnxiety: average(anxiety),
+    reports: days.length,
+    trainingCount: days.filter((day) => day.completed?.includes('body_training')).length,
+    foodPlanDays: days.filter((day) => day.completed?.includes('body_food')).length,
+    workJournals: days.filter((day) => day.completed?.includes('work_log')).length,
+    projectSessions: days.filter((day) => day.completed?.includes('creator_project30')).length,
+    socialActions: days.filter((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message')).length,
+    instagramControlDays: days.filter((day) => !day.penalties?.includes('insta_slip')).length
   };
-
-  DAILY_METRIC_FIELDS.forEach((field) => {
-    if (form.elements[field]) form.elements[field].value = source.metrics?.[field] ?? '';
-  });
-  NOTE_FIELDS.forEach((field) => {
-    if (form.elements[field]) form.elements[field].value = source.notes?.[field] ?? '';
-  });
-  DAILY_QUESTS.flatMap((quest) => quest.items).forEach((item) => setChecked(form, `q_${item.id}`, source.completed?.includes(item.id)));
-  PENALTIES.forEach((item) => setChecked(form, `p_${item.id}`, source.penalties?.includes(item.id)));
-  updateDailyPreview();
 }
 
-function fillWeeklyForm(week) {
-  const form = $('#weeklyForm');
-  form.reset();
-  const range = getCurrentWeekRange();
-  const source = week || {
-    metrics: {
-      weekNumber: getSeasonWeekNumber(),
-      startDate: range.start,
-      endDate: range.end
-    },
-    notes: {},
-    completed: []
-  };
-
-  WEEKLY_METRIC_FIELDS.forEach((field) => {
-    if (form.elements[field]) form.elements[field].value = source.metrics?.[field] ?? '';
-  });
-  WEEKLY_NOTE_FIELDS.forEach((field) => {
-    if (form.elements[field]) form.elements[field].value = source.notes?.[field] ?? '';
-  });
-  WEEKLY_BOSSES.flatMap((boss) => boss.items).forEach((item) => setChecked(form, `b_${item.id}`, source.completed?.includes(item.id)));
-  updateWeeklyPreview();
+function average(values) {
+  if (!values.length) return '';
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
-function getNextDayNumber() {
-  const max = state.days.reduce((value, day) => Math.max(value, Number(day.metrics?.dayNumber || 0)), 0);
-  return max + 1;
+function getClosedDaysInWeek(weekId) {
+  const end = getWeekEnd(weekId);
+  return state.days
+    .filter((day) => {
+      const date = day.metrics?.date || day.date || day.id;
+      return date >= weekId && date <= end;
+    })
+    .sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
 }
 
-function getSeasonWeekNumber() {
-  const start = new Date(state.profile.startDate || todayISO());
-  const now = new Date(todayISO());
-  const diffMs = now - start;
-  return Math.max(1, Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1);
+function isWeeklyMinimumPassed(days, weekDraft = state.currentWeek) {
+  const reports = days.length;
+  const trainings = days.filter((day) => day.completed?.includes('body_training')).length;
+  const workLogs = days.filter((day) => day.completed?.includes('work_log')).length;
+  const projectSessions = days.filter((day) => day.completed?.includes('creator_project30')).length;
+  const instaControl = days.filter((day) => !day.penalties?.includes('insta_slip')).length;
+  const bodyMeasure = days.some((day) => toNumber(day.metrics?.weight) !== null && toNumber(day.metrics?.waist) !== null);
+  const social = days.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
+  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports && bodyMeasure && social;
 }
 
-function getCurrentWeekRange() {
-  const now = new Date(todayISO());
-  const day = now.getDay() || 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - day + 1);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { start: toISODate(monday), end: toISODate(sunday) };
+function buildAutoWeekSummary(days, calc) {
+  const totalDaily = days.reduce((sum, day) => sum + Number(day.netXp || 0), 0);
+  const best = [...days].sort((a, b) => Number(b.netXp || 0) - Number(a.netXp || 0))[0];
+  return `Автоотчёт: ${days.length}/7 дней, ${totalDaily} XP за дни, ${calc.totalXp} XP за боссов.${best ? ` Лучший день: ${formatDate(best.metrics?.date)} — ${best.netXp} XP.` : ''}`;
 }
 
-function toISODate(date) {
-  const tz = date.getTimezoneOffset() * 60000;
-  return new Date(date - tz).toISOString().slice(0, 10);
+function buildAutoWeekImprove(days) {
+  if (days.length < 7) return 'Закрывать каждый день, а не оставлять пустые провалы.';
+  const lowDays = days.filter((day) => Number(day.netXp || 0) <= 100).length;
+  if (lowDays >= 3) return 'Поднять базу: BODY / WORK / CREATOR / CALM.';
+  return 'Удержать ритм и добавить один сильный проектный результат.';
 }
 
-function getCurrentWeekDays() {
-  const { start, end } = getCurrentWeekRange();
-  return state.days.filter((day) => (day.metrics?.date || day.id) >= start && (day.metrics?.date || day.id) <= end);
+function syncClock(showMessage = false) {
+  const today = todayMoscowISO();
+  let changed = false;
+
+  if (!state.currentDay) state.currentDay = createDayDraft(today, getNextDayNumberFromDays());
+  if (!state.currentWeek) state.currentWeek = createWeekDraft(getWeekStart(today));
+
+  const activeDate = state.currentDay.date || state.system.currentDate || today;
+
+  if (activeDate < today) {
+    // закрываем последний активный день
+    finalizeDay(state.currentDay, 'auto-midnight-msk');
+    let nextDate = addDays(activeDate, 1);
+    let nextNumber = Number(state.currentDay.dayNumber || state.system.dayCounter || 1) + 1;
+
+    // создаём пустые пропущенные дни, если приложение не открывали несколько суток
+    while (nextDate < today) {
+      finalizeDay(createMissedDay(nextDate, nextNumber), 'auto-missed-day');
+      nextDate = addDays(nextDate, 1);
+      nextNumber += 1;
+    }
+
+    state.system.currentDate = today;
+    state.system.dayCounter = nextNumber;
+    state.currentDay = createDayDraft(today, nextNumber);
+    changed = true;
+  }
+
+  const currentWeekId = getWeekStart(today);
+  const activeWeekId = state.currentWeek.weekId || state.system.currentWeekId || currentWeekId;
+  if (activeWeekId < currentWeekId) {
+    finalizeWeek(state.currentWeek, 'auto-monday-msk');
+    let nextWeekId = addDays(activeWeekId, 7);
+    while (nextWeekId < currentWeekId) {
+      finalizeWeek(createWeekDraft(nextWeekId), 'auto-missed-week');
+      nextWeekId = addDays(nextWeekId, 7);
+    }
+    state.system.currentWeekId = currentWeekId;
+    state.currentWeek = createWeekDraft(currentWeekId);
+    changed = true;
+  }
+
+  state.system.currentDate = state.currentDay.date;
+  state.system.currentWeekId = state.currentWeek.weekId;
+  updateClockUI();
+
+  if (changed) {
+    saveState();
+    fillDailyForm();
+    fillWeeklyForm();
+    renderAll();
+    showToast(showMessage ? 'Синхронизация: день/неделя обновлены по МСК' : 'День обновлён по МСК');
+  }
+}
+
+function updateClockUI() {
+  const today = state.currentDay?.date || todayMoscowISO();
+  const week = state.currentWeek || createWeekDraft(getWeekStart(today));
+  const dayText = `День №${state.currentDay?.dayNumber || 1} • ${formatDate(today)} • ${moscowTimeText()}`;
+  const weekText = `Неделя №${getSeasonWeekNumber(week.weekId)} • ${formatDate(week.startDate)} — ${formatDate(week.endDate)}`;
+  const nextText = `Следующая смена дня: 00:00 МСК`;
+  if ($('#currentDayMeta')) $('#currentDayMeta').textContent = dayText;
+  if ($('#currentWeekMeta')) $('#currentWeekMeta').textContent = weekText;
+  if ($('#rolloverMeta')) $('#rolloverMeta').textContent = nextText;
+  if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `Текущий день — ${formatDate(today)}`;
+  if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Текущая неделя — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
 }
 
 function getTotals() {
-  const dailyXp = state.days.reduce((sum, day) => sum + Math.max(0, Number(day.netXp || 0)), 0);
-  const weeklyXp = state.weeks.reduce((sum, week) => sum + Math.max(0, Number(week.totalXp || 0)), 0);
   const statXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
-
+  let closedDailyXp = 0;
   state.days.forEach((day) => {
-    Object.entries(day.categoryXp || {}).forEach(([stat, value]) => {
-      statXp[stat] = (statXp[stat] || 0) + Number(value || 0);
-    });
-  });
-  state.weeks.forEach((week) => {
-    Object.entries(week.categoryXp || {}).forEach(([stat, value]) => {
-      statXp[stat] = (statXp[stat] || 0) + Number(value || 0);
+    closedDailyXp += Number(day.netXp || 0);
+    Object.entries(day.categoryXp || {}).forEach(([key, value]) => {
+      statXp[key] = (statXp[key] || 0) + Number(value || 0);
     });
   });
 
-  return { dailyXp, weeklyXp, totalXp: dailyXp + weeklyXp, statXp };
+  let closedWeeklyXp = 0;
+  state.weeks.forEach((week) => {
+    closedWeeklyXp += Number(week.totalXp || 0);
+    Object.entries(week.categoryXp || {}).forEach(([key, value]) => {
+      statXp[key] = (statXp[key] || 0) + Number(value || 0);
+    });
+  });
+
+  const liveDaily = calculateDailyFromDraft(state.currentDay);
+  Object.entries(liveDaily.categoryXp || {}).forEach(([key, value]) => {
+    statXp[key] = (statXp[key] || 0) + Number(value || 0);
+  });
+
+  const liveWeek = calculateWeeklyFromDraft(state.currentWeek);
+  Object.entries(liveWeek.categoryXp || {}).forEach(([key, value]) => {
+    statXp[key] = (statXp[key] || 0) + Number(value || 0);
+  });
+
+  return {
+    statXp,
+    closedDailyXp,
+    closedWeeklyXp,
+    liveDailyXp: liveDaily.netXp,
+    liveWeekXp: liveWeek.totalXp,
+    totalXp: closedDailyXp + closedWeeklyXp + liveDaily.netXp + liveWeek.totalXp
+  };
 }
 
 function renderDashboard() {
   const totals = getTotals();
   const level = getLevel(totals.totalXp);
-  const currentWeekDays = getCurrentWeekDays();
-  const weekXp = currentWeekDays.reduce((sum, day) => sum + Math.max(0, Number(day.netXp || 0)), 0);
-  const lastDay = [...state.days].sort((a, b) => (b.metrics?.date || '').localeCompare(a.metrics?.date || ''))[0];
-
+  const liveDaily = calculateDailyFromDraft(state.currentDay);
+  const liveWeek = calculateWeeklyFromDraft(state.currentWeek);
   $('#seasonTitle').textContent = state.profile.seasonName || 'Москва / Сушка / Работа';
   $('#statusRank').textContent = getStatusRank(totals.totalXp);
   $('#levelValue').textContent = level.level;
-  $('#levelProgressText').textContent = `${totals.totalXp - level.currentFloor} / ${level.next - level.currentFloor} XP`;
+  $('#levelProgressText').textContent = `${totals.totalXp} / ${level.next} XP`;
   $('#levelProgressBar').style.width = `${level.progress}%`;
   $('#totalXpValue').textContent = totals.totalXp;
-  $('#lastDayRank').textContent = lastDay?.rank || '—';
-  $('#lastDayXp').textContent = lastDay ? `${lastDay.netXp} XP • ${formatDate(lastDay.metrics.date)}` : 'нет отчёта';
-  $('#weekXpValue').textContent = `${weekXp} XP`;
-  $('#weekReportsValue').textContent = `${currentWeekDays.length} отчётов`;
+  $('#lastDayRank').textContent = liveDaily.rank;
+  $('#lastDayXp').textContent = `сегодня live: ${liveDaily.netXp} XP`;
+  $('#weekXpValue').textContent = `${getWeekCurrentXp()} XP`;
+  $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 отчётов • boss ${liveWeek.totalXp} XP`;
 
-  renderStatBars(totals.statXp);
-  renderWeeklyMinimum(currentWeekDays);
-  renderRecentDays();
-}
-
-function renderStatBars(statXp) {
-  const container = $('#statBars');
-  container.innerHTML = STAT_KEYS.map((stat) => {
-    const xp = Number(statXp[stat] || 0);
-    const pct = Math.min(100, (xp % 1000) / 10);
+  $('#statBars').innerHTML = STAT_KEYS.map((key) => {
+    const value = totals.statXp[key] || 0;
+    const width = Math.min(100, (value / 2500) * 100);
     return `
       <div>
-        <div class="bar-top"><span>${escapeHTML(stat)}</span><strong>${xp} XP</strong></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-top"><span>${escapeHTML(key)}</span><strong>${value} XP</strong></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
       </div>
     `;
   }).join('');
+
+  renderWeeklyMinimum();
+  renderRecentDays();
+  updateClockUI();
 }
 
-function renderWeeklyMinimum(days) {
-  const trainings = days.filter((day) => day.completed?.includes('body_training')).length;
-  const workLogs = days.filter((day) => day.completed?.includes('work_log')).length;
-  const projectSessions = days.filter((day) => day.completed?.includes('creator_project30')).length;
-  const reports = days.length;
-  const instaControl = days.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  const bodyMeasure = days.some((day) => day.metrics?.weight && day.metrics?.waist);
-  const social = days.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
+function getWeekCurrentXp() {
+  const weekId = state.currentWeek?.weekId || getWeekStart(todayMoscowISO());
+  const daily = getClosedDaysInWeek(weekId).reduce((sum, day) => sum + Number(day.netXp || 0), 0);
+  const liveDaily = state.currentDay?.date >= weekId && state.currentDay?.date <= getWeekEnd(weekId) ? calculateDailyFromDraft(state.currentDay).netXp : 0;
+  const liveWeek = calculateWeeklyFromDraft(state.currentWeek).totalXp;
+  return daily + liveDaily + liveWeek;
+}
+
+function renderWeeklyMinimum() {
+  const weekId = state.currentWeek?.weekId || getWeekStart(todayMoscowISO());
+  const days = getClosedDaysInWeek(weekId);
+  const includeCurrent = state.currentDay?.date >= weekId && state.currentDay?.date <= getWeekEnd(weekId)
+    ? [...days, finalizePreviewDay(state.currentDay)]
+    : days;
+  const reports = includeCurrent.length;
+  const trainings = includeCurrent.filter((day) => day.completed?.includes('body_training')).length;
+  const workLogs = includeCurrent.filter((day) => day.completed?.includes('work_log')).length;
+  const projectSessions = includeCurrent.filter((day) => day.completed?.includes('creator_project30')).length;
+  const instaControl = includeCurrent.filter((day) => !day.penalties?.includes('insta_slip')).length;
+  const bodyMeasure = includeCurrent.some((day) => toNumber(day.metrics?.weight) !== null && toNumber(day.metrics?.waist) !== null);
+  const social = includeCurrent.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
 
   const items = [
     { text: '3 тренировки', value: `${trainings}/3`, ok: trainings >= 3 },
@@ -636,23 +945,38 @@ function renderWeeklyMinimum(days) {
   `).join('');
 }
 
+function finalizePreviewDay(draft) {
+  const calc = calculateDailyFromDraft(draft);
+  return {
+    id: draft.date,
+    date: draft.date,
+    metrics: { date: draft.date, dayNumber: draft.dayNumber, ...(draft.metrics || {}) },
+    notes: { ...(draft.notes || {}) },
+    completed: calc.completed,
+    penalties: calc.penalties,
+    netXp: calc.netXp,
+    rank: calc.rank
+  };
+}
+
 function renderRecentDays() {
-  const recent = [...state.days].sort((a, b) => (b.metrics?.date || '').localeCompare(a.metrics?.date || '')).slice(0, 5);
-  $('#recentDays').innerHTML = recent.length ? recent.map(dayHistoryItem).join('') : '<p class="muted">Пока пусто. Заполни первый день.</p>';
+  const current = finalizePreviewDay(state.currentDay);
+  const recent = [current, ...state.days].sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || '')).slice(0, 5);
+  $('#recentDays').innerHTML = recent.length ? recent.map(dayHistoryItem).join('') : '<p class="muted">Пока пусто. Отмечай текущий день.</p>';
 }
 
 function dayHistoryItem(day) {
+  const isCurrent = day.id === state.currentDay?.date;
   const notes = [day.notes?.creatorProject, day.notes?.creatorDone, day.notes?.workDone].filter(Boolean).slice(0, 2).join(' • ');
   return `
     <article class="history-item">
       <div class="history-item-top">
         <div>
-          <div class="history-title">${formatDate(day.metrics?.date)} — ${escapeHTML(day.rank)}</div>
-          <div class="history-meta">${day.netXp} XP • плюс ${day.positiveXp} • штраф ${day.penaltyXp}</div>
+          <div class="history-title">${formatDate(day.metrics?.date || day.date || day.id)} — ${escapeHTML(day.rank)}${isCurrent ? ' • live' : ''}</div>
+          <div class="history-meta">${day.netXp} XP${day.positiveXp !== undefined ? ` • плюс ${day.positiveXp} • штраф ${day.penaltyXp}` : ''}</div>
         </div>
         <div class="history-actions">
-          <button class="mini-btn" type="button" data-edit-day="${escapeHTML(day.id)}">Открыть</button>
-          <button class="mini-btn" type="button" data-delete-day="${escapeHTML(day.id)}">Удалить</button>
+          ${isCurrent ? '<button class="mini-btn" type="button" data-tab-go="daily">Открыть</button>' : `<button class="mini-btn" type="button" data-delete-day="${escapeHTML(day.id)}">Удалить</button>`}
         </div>
       </div>
       ${notes ? `<div class="history-meta">${escapeHTML(notes)}</div>` : ''}
@@ -665,11 +989,10 @@ function weekHistoryItem(week) {
     <article class="history-item">
       <div class="history-item-top">
         <div>
-          <div class="history-title">Неделя ${escapeHTML(week.id)} — ${week.result === 'passed' ? 'закрыта' : 'не закрыта'}</div>
-          <div class="history-meta">${week.totalXp} XP • ${formatDate(week.metrics?.startDate)} — ${formatDate(week.metrics?.endDate)}</div>
+          <div class="history-title">Неделя ${escapeHTML(week.metrics?.weekNumber || week.weekNumber || week.id)} — ${week.result === 'passed' ? 'закрыта' : 'не закрыта'}</div>
+          <div class="history-meta">${week.totalXp} boss XP • ${week.dailyXp || 0} day XP • ${formatDate(week.metrics?.startDate || week.startDate)} — ${formatDate(week.metrics?.endDate || week.endDate)}</div>
         </div>
         <div class="history-actions">
-          <button class="mini-btn" type="button" data-edit-week="${escapeHTML(week.id)}">Открыть</button>
           <button class="mini-btn" type="button" data-delete-week="${escapeHTML(week.id)}">Удалить</button>
         </div>
       </div>
@@ -679,39 +1002,41 @@ function weekHistoryItem(week) {
 }
 
 function renderHistory() {
-  const days = [...state.days].sort((a, b) => (b.metrics?.date || '').localeCompare(a.metrics?.date || ''));
-  const weeks = [...state.weeks].sort((a, b) => Number(b.id) - Number(a.id));
+  const current = finalizePreviewDay(state.currentDay);
+  const days = [current, ...state.days].sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''));
+  const weeks = [...state.weeks].sort((a, b) => (b.weekId || b.id || '').localeCompare(a.weekId || a.id || ''));
   $('#historyDays').innerHTML = days.length ? days.map(dayHistoryItem).join('') : '<p class="muted">Дней пока нет.</p>';
-  $('#historyWeeks').innerHTML = weeks.length ? weeks.map(weekHistoryItem).join('') : '<p class="muted">Недель пока нет.</p>';
+  $('#historyWeeks').innerHTML = weeks.length ? weeks.map(weekHistoryItem).join('') : '<p class="muted">Недель пока нет. Первая закроется в ночь с воскресенья на понедельник.</p>';
 }
 
 function renderSettings() {
   const form = $('#settingsForm');
   form.elements.playerName.value = state.profile.playerName || '';
   form.elements.seasonName.value = state.profile.seasonName || '';
-  form.elements.startDate.value = state.profile.startDate || todayISO();
+  form.elements.startDate.value = state.profile.startDate || todayMoscowISO();
   form.elements.seasonGoal.value = state.profile.seasonGoal || '';
   $('#chatPrompt').textContent = buildChatPrompt();
 }
 
 function buildChatPrompt() {
   const totals = getTotals();
-  return `PRIME RPG — разбор дня
+  return `PRIME RPG — разбор текущего состояния
 
-Текущий сезон: ${state.profile.seasonName || 'Москва / Сушка / Работа'}
-Текущий XP: ${totals.totalXp}
-Текущий статус: ${getStatusRank(totals.totalXp)}
+Сезон: ${state.profile.seasonName || 'Москва / Сушка / Работа'}
+Дата МСК: ${formatDate(state.currentDay.date)}
+День №${state.currentDay.dayNumber}
+Неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}
+Total XP live: ${totals.totalXp}
+Status: ${getStatusRank(totals.totalXp)}
 
-Разбери мой дневной отчёт по системе PRIME RPG:
-1. Посчитай XP по квестам.
-2. Посчитай штрафы.
-3. Дай ранг дня.
-4. Обнови статы BODY/FIGHTER/MIND/WORK/CREATOR/CALM/DISCIPLINE/CHARISMA/MONEY.
-5. Коротко скажи, что было нормально.
-6. Коротко скажи, где просадка.
-7. Дай 3 квеста на завтра.
+Разбери мой PRIME RPG прогресс:
+1. Коротко оцени текущий день.
+2. Назови XP и ранг дня.
+3. Назови просадку.
+4. Дай 3 действия на завтра.
+5. Не лей мотивационную воду.
 
-Стиль: коротко, жёстко, без воды, без мотивационного цирка.`;
+Стиль: коротко, жёстко, по делу.`;
 }
 
 function saveSettings(event) {
@@ -721,9 +1046,10 @@ function saveSettings(event) {
     ...state.profile,
     playerName: form.elements.playerName.value.trim(),
     seasonName: form.elements.seasonName.value.trim() || 'Москва / Сушка / Работа',
-    startDate: form.elements.startDate.value || todayISO(),
+    startDate: form.elements.startDate.value || todayMoscowISO(),
     seasonGoal: form.elements.seasonGoal.value.trim()
   };
+  state.currentWeek.weekNumber = getSeasonWeekNumber(state.currentWeek.weekId);
   saveState();
   renderAll();
   showToast('Профиль сохранён');
@@ -736,12 +1062,14 @@ function switchTab(tabId) {
 }
 
 function exportData() {
+  autosaveCurrentDay();
+  autosaveCurrentWeek();
   const payload = JSON.stringify(state, null, 2);
   const blob = new Blob([payload], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `prime-rpg-backup-${todayISO()}.json`;
+  link.download = `prime-rpg-backup-${todayMoscowISO()}.json`;
   link.click();
   URL.revokeObjectURL(url);
   showToast('JSON экспортирован');
@@ -754,14 +1082,11 @@ function importData(file) {
     try {
       const imported = JSON.parse(String(reader.result));
       if (!imported || typeof imported !== 'object') throw new Error('bad file');
-      state = {
-        ...defaultState(),
-        ...imported,
-        profile: { ...defaultState().profile, ...(imported.profile || {}) },
-        days: Array.isArray(imported.days) ? imported.days : [],
-        weeks: Array.isArray(imported.weeks) ? imported.weeks : []
-      };
+      state = migrateState(imported);
       saveState();
+      syncClock(false);
+      fillDailyForm();
+      fillWeeklyForm();
       renderAll();
       showToast('Данные импортированы');
     } catch (error) {
@@ -777,57 +1102,69 @@ function copyText(text, successMessage) {
 }
 
 function buildHistorySummary() {
-  const days = [...state.days].sort((a, b) => (b.metrics?.date || '').localeCompare(a.metrics?.date || '')).slice(0, 7).reverse();
+  const days = [finalizePreviewDay(state.currentDay), ...state.days]
+    .sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''))
+    .slice(0, 7)
+    .reverse();
   const totals = getTotals();
   const lines = [
     'PRIME RPG — сводка',
-    `Total XP: ${totals.totalXp}`,
+    `Дата МСК: ${formatDate(state.currentDay.date)}`,
+    `Total XP live: ${totals.totalXp}`,
     `Status: ${getStatusRank(totals.totalXp)}`,
+    `Current week: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}`,
     '',
     'Последние дни:'
   ];
-  days.forEach((day) => {
-    lines.push(`${formatDate(day.metrics?.date)} — ${day.netXp} XP — ${day.rank}`);
-  });
+  days.forEach((day) => lines.push(`${formatDate(day.metrics?.date)} — ${day.netXp} XP — ${day.rank}`));
+  if (state.weeks.length) {
+    lines.push('', 'Закрытые недели:');
+    state.weeks.slice(-3).forEach((week) => lines.push(`Неделя ${week.metrics?.weekNumber || week.weekNumber}: ${week.dailyXp || 0} daily XP + ${week.totalXp} boss XP — ${week.result}`));
+  }
   return lines.join('\n');
 }
 
 function deleteDay(id) {
-  state.days = state.days.filter((day) => day.id !== id);
+  state.days = state.days.filter((day) => day.id !== id && day.metrics?.date !== id);
   saveState();
   renderAll();
   showToast('День удалён');
 }
 
 function deleteWeek(id) {
-  state.weeks = state.weeks.filter((week) => week.id !== id);
+  state.weeks = state.weeks.filter((week) => week.id !== id && week.weekId !== id);
   saveState();
   renderAll();
   showToast('Неделя удалена');
 }
 
 function handleHistoryClick(event) {
-  const editDay = event.target.closest('[data-edit-day]');
+  const tabGo = event.target.closest('[data-tab-go]');
   const deleteDayButton = event.target.closest('[data-delete-day]');
-  const editWeek = event.target.closest('[data-edit-week]');
   const deleteWeekButton = event.target.closest('[data-delete-week]');
-
-  if (editDay) {
-    const day = state.days.find((item) => item.id === editDay.dataset.editDay);
-    if (day) {
-      fillDailyForm(day);
-      switchTab('daily');
-    }
-  }
+  if (tabGo) switchTab(tabGo.dataset.tabGo);
   if (deleteDayButton) deleteDay(deleteDayButton.dataset.deleteDay);
-  if (editWeek) {
-    const week = state.weeks.find((item) => item.id === editWeek.dataset.editWeek);
-    if (week) {
-      fillWeeklyForm(week);
-      switchTab('weekly');
-    }
-  }
   if (deleteWeekButton) deleteWeek(deleteWeekButton.dataset.deleteWeek);
+}
+
+function resetCurrentDay() {
+  const ok = window.confirm('Очистить только текущий день? Закрытые дни не трогаются.');
+  if (!ok) return;
+  state.currentDay = createDayDraft(state.system.currentDate, state.system.dayCounter);
+  saveState();
+  fillDailyForm();
+  renderAll();
+  showToast('Текущий день очищен');
+}
+
+function resetCurrentWeek() {
+  const ok = window.confirm('Очистить только текущую неделю? Закрытые недели не трогаются.');
+  if (!ok) return;
+  state.currentWeek = createWeekDraft(state.system.currentWeekId);
+  saveState();
+  fillWeeklyForm();
+  renderAll();
+  showToast('Текущая неделя очищена');
 }
 
 function renderAll() {
@@ -836,6 +1173,7 @@ function renderAll() {
   renderSettings();
   updateDailyPreview();
   updateWeeklyPreview();
+  updateClockUI();
 }
 
 function registerServiceWorker() {
@@ -846,17 +1184,24 @@ function registerServiceWorker() {
 
 function bindEvents() {
   $$('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-  $('#dailyForm').addEventListener('input', updateDailyPreview);
-  $('#dailyForm').addEventListener('change', updateDailyPreview);
-  $('#dailyForm').addEventListener('submit', saveDaily);
-  $('#weeklyForm').addEventListener('input', updateWeeklyPreview);
-  $('#weeklyForm').addEventListener('change', updateWeeklyPreview);
-  $('#weeklyForm').addEventListener('submit', saveWeekly);
+  $('#dailyForm').addEventListener('input', autosaveCurrentDay);
+  $('#dailyForm').addEventListener('change', autosaveCurrentDay);
+  $('#dailyForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    autosaveCurrentDay();
+    showToast('Текущий день сохранён в live-слоте');
+  });
+  $('#weeklyForm').addEventListener('input', autosaveCurrentWeek);
+  $('#weeklyForm').addEventListener('change', autosaveCurrentWeek);
+  $('#weeklyForm').addEventListener('submit', (event) => {
+    event.preventDefault();
+    autosaveCurrentWeek();
+    showToast('Текущая неделя сохранена в live-слоте');
+  });
   $('#settingsForm').addEventListener('submit', saveSettings);
-  $('#fillTodayBtn').addEventListener('click', () => fillDailyForm());
-  $('#clearDailyBtn').addEventListener('click', () => fillDailyForm());
-  $('#fillWeekBtn').addEventListener('click', () => fillWeeklyForm());
-  $('#clearWeeklyBtn').addEventListener('click', () => fillWeeklyForm());
+  $('#syncClockBtn').addEventListener('click', () => syncClock(true));
+  $('#clearDailyBtn').addEventListener('click', resetCurrentDay);
+  $('#clearWeeklyBtn').addEventListener('click', resetCurrentWeek);
   $('#exportBtn').addEventListener('click', exportData);
   $('#importFile').addEventListener('change', (event) => importData(event.target.files[0]));
   $('#copyPromptBtn').addEventListener('click', () => copyText($('#chatPrompt').textContent, 'Промпт скопирован'));
@@ -866,6 +1211,8 @@ function bindEvents() {
   $('#resetBtn').addEventListener('click', () => {
     const ok = window.confirm('Стереть все дни, недели и настройки PRIME RPG?');
     if (!ok) return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
     state = defaultState();
     saveState();
     fillDailyForm();
@@ -873,16 +1220,23 @@ function bindEvents() {
     renderAll();
     showToast('Система сброшена');
   });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncClock(false);
+  });
+  window.addEventListener('focus', () => syncClock(false));
 }
 
 function init() {
   renderDailyQuests();
   renderWeeklyBosses();
   bindEvents();
+  syncClock(false);
   fillDailyForm();
   fillWeeklyForm();
   renderAll();
   registerServiceWorker();
+  window.setInterval(() => syncClock(false), ROLLOVER_CHECK_MS);
+  window.setInterval(updateClockUI, 1000);
 }
 
 init();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'prime-rpg-v1';
+const CACHE_NAME = 'prime-rpg-v2';
 const APP_SHELL = ['./', './index.html', './styles.css', './app.js', './manifest.json', './assets/icon.svg'];
 
 self.addEventListener('install', (event) => {
