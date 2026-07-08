@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — компактный habit tracker для личной RPG-системы: квесты, XP, ранги, недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=1.4.0" />
+  <link rel="manifest" href="manifest.json?v=1.5.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=1.4.0" />
+  <link rel="stylesheet" href="styles.css?v=1.5.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,12 +17,13 @@
         <p class="eyebrow">habit tracker</p>
         <h1><span aria-hidden="true">⚡</span> PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v1.4</span>
+          <span id="appVersionValue">v1.5</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
         </div>
       </div>
+      <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
 
     </header>
     <section class="update-banner" id="updateBanner" hidden>
@@ -36,13 +37,15 @@
       </div>
     </section>
 
-    <nav class="tabbar" aria-label="Главная навигация">
+    <nav class="tabbar" id="mainNav" aria-label="Главная навигация">
       <button class="tab-btn active" data-tab="dashboard" type="button">👤 Профиль</button>
       <button class="tab-btn" data-tab="daily" type="button">📅 День</button>
       <button class="tab-btn" data-tab="weekly" type="button">📅 Неделя</button>
+      <button class="tab-btn" data-tab="calendar" type="button">🗓️ Календарь</button>
       <button class="tab-btn" data-tab="history" type="button">📈 История</button>
       <button class="tab-btn" data-tab="settings" type="button">⚙️ Настройки</button>
     </nav>
+    <div class="menu-backdrop" id="menuBackdrop" hidden></div>
 
     <main>
       <section id="dashboard" class="tab-panel active">
@@ -70,24 +73,7 @@
           </article>
         </section>
 
-        <section class="grid two-col dashboard-addons">
-          <article class="panel calendar-panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">🗓️ Calendar</p>
-                <h3 id="monthCalendarTitle">Календарь</h3>
-              </div>
-            </div>
-            <div class="calendar-weekdays" aria-hidden="true">
-              <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span>
-            </div>
-            <div id="monthCalendar" class="month-calendar"></div>
-            <div class="calendar-legend">
-              <span><i class="rank-solid"></i>Solid+</span>
-              <span><i class="rank-prime"></i>Prime+</span>
-              <span><i class="rank-broken"></i>Broken</span>
-            </div>
-          </article>
+        <section class="grid dashboard-addons">
           <article class="panel summary-panel">
             <div class="section-head">
               <div>
@@ -171,6 +157,26 @@
           <section class="quest-grid" id="weeklyBossGrid"></section>
 
         </form>
+      </section>
+
+      <section id="calendar" class="tab-panel">
+        <section class="panel calendar-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">🗓️ Calendar</p>
+              <h2 id="monthCalendarTitle">Календарь</h2>
+            </div>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span>
+          </div>
+          <div id="monthCalendar" class="month-calendar"></div>
+          <div class="calendar-legend">
+            <span><i class="rank-solid"></i>Solid+</span>
+            <span><i class="rank-prime"></i>Prime+</span>
+            <span><i class="rank-broken"></i>Broken</span>
+          </div>
+        </section>
       </section>
 
       <section id="history" class="tab-panel">
@@ -279,6 +285,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=1.4.0"></script>
+  <script src="app.js?v=1.5.0"></script>
 </body>
 </html>

@@ -1,7 +1,9 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v14';
-const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v14';
+const STORAGE_KEY = 'prime-rpg-state-v15';
+const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v15';
+const LEGACY_STORAGE_KEY_V14 = 'prime-rpg-state-v14';
+const LEGACY_STORAGE_KEY_BACKUP_V14 = 'prime-rpg-state-backup-v14';
 const LEGACY_STORAGE_KEY_V10 = 'prime-rpg-state-v10';
 const LEGACY_STORAGE_KEY_V8 = 'prime-rpg-state-v8';
 const LEGACY_STORAGE_KEY_V7 = 'prime-rpg-state-v7';
@@ -9,8 +11,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.4';
-const APP_CACHE_QUERY = '1.4.0';
+const APP_VERSION = 'v1.5';
+const APP_CACHE_QUERY = '1.5.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -236,7 +238,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 14,
+    version: 15,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -261,7 +263,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V10) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_BACKUP_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_V10) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -276,7 +278,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 14,
+    version: 15,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -308,7 +310,7 @@ function migrateState(parsed) {
 
 function saveState() {
   if (!state) return;
-  state.version = 14;
+  state.version = 15;
   state.system.lastSyncAt = nowMoscowStamp();
   const payload = JSON.stringify(state);
   try {
@@ -524,7 +526,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.4.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.5.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -1216,7 +1218,6 @@ function renderDashboard() {
   }).join('');
 
   renderWeeklyMinimum();
-  renderMonthCalendar();
   renderLatestDaySummary();
   renderRecentDays();
   updateClockUI();
@@ -1431,9 +1432,43 @@ function saveSettings(event) {
   event?.preventDefault?.();
 }
 
+function closeMobileMenu() {
+  const nav = $('#mainNav');
+  const button = $('#mobileMenuBtn');
+  const backdrop = $('#menuBackdrop');
+  if (nav) nav.classList.remove('open');
+  if (button) button.setAttribute('aria-expanded', 'false');
+  if (backdrop) {
+    backdrop.classList.remove('show');
+    backdrop.hidden = true;
+  }
+  document.body.classList.remove('menu-open');
+}
+
+function openMobileMenu() {
+  const nav = $('#mainNav');
+  const button = $('#mobileMenuBtn');
+  const backdrop = $('#menuBackdrop');
+  if (nav) nav.classList.add('open');
+  if (button) button.setAttribute('aria-expanded', 'true');
+  if (backdrop) {
+    backdrop.hidden = false;
+    requestAnimationFrame(() => backdrop.classList.add('show'));
+  }
+  document.body.classList.add('menu-open');
+}
+
+function toggleMobileMenu() {
+  const nav = $('#mainNav');
+  if (nav?.classList.contains('open')) closeMobileMenu();
+  else openMobileMenu();
+}
+
 function switchTab(tabId) {
   $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
   $$('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === tabId));
+  if (tabId === 'calendar') renderMonthCalendar();
+  closeMobileMenu();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1653,6 +1688,7 @@ function resetCurrentWeek() {
 
 function renderAll() {
   renderDashboard();
+  renderMonthCalendar();
   renderHistory();
   renderSettings();
   updateDailyPreview();
@@ -1686,6 +1722,9 @@ function registerServiceWorker() {
 
 function bindEvents() {
   $$('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+  if ($('#mobileMenuBtn')) $('#mobileMenuBtn').addEventListener('click', toggleMobileMenu);
+  if ($('#menuBackdrop')) $('#menuBackdrop').addEventListener('click', closeMobileMenu);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMobileMenu(); });
   const dailyForm = $('#dailyForm');
   if (dailyForm) {
     dailyForm.addEventListener('input', autosaveCurrentDay);
