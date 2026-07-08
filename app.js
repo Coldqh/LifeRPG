@@ -1,11 +1,11 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v6';
+const STORAGE_KEY = 'prime-rpg-state-v7';
 const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.6';
+const APP_VERSION = 'v0.7';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -438,7 +438,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.6.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.7.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -744,10 +744,13 @@ function updateDailyPreview() {
 }
 
 function updateWeeklyPreview() {
+  const title = $('#weeklyResultTitle');
+  const details = $('#weeklyResultDetails');
+  if (!title || !details) return;
   const result = calculateWeeklyFromDraft(state.currentWeek);
   const passed = result.totalXp >= 500;
-  $('#weeklyResultTitle').textContent = `${result.totalXp} XP — ${passed ? 'неделя закрывается' : 'неделя не закрыта'}`;
-  $('#weeklyResultDetails').textContent = `Live-неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}. Боссы: BODY ${result.bossXp.bodyBoss || 0}, WORK ${result.bossXp.workBoss || 0}, CREATOR ${result.bossXp.creatorBoss || 0}, CALM ${result.bossXp.calmBoss || 0}, SOCIAL ${result.bossXp.socialBoss || 0}, MONEY ${result.bossXp.moneyBoss || 0}.`;
+  title.textContent = `${result.totalXp} XP — ${passed ? 'неделя закрывается' : 'неделя не закрыта'}`;
+  details.textContent = `Live-неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}. Боссы: BODY ${result.bossXp.bodyBoss || 0}, WORK ${result.bossXp.workBoss || 0}, CREATOR ${result.bossXp.creatorBoss || 0}, CALM ${result.bossXp.calmBoss || 0}, SOCIAL ${result.bossXp.socialBoss || 0}, MONEY ${result.bossXp.moneyBoss || 0}.`;
 }
 
 function finalizeDay(draft, reason = 'midnight') {
@@ -1072,9 +1075,22 @@ function finalizePreviewDay(draft) {
   };
 }
 
+function isEmptyDayDraft(draft) {
+  if (!draft) return true;
+  const hasCompleted = Boolean(draft.completed?.length || draft.penalties?.length);
+  const hasMetrics = Object.values(draft.metrics || {}).some((value) => value !== '' && value !== null && value !== undefined);
+  const hasNotes = Object.values(draft.notes || {}).some((value) => String(value || '').trim());
+  return !hasCompleted && !hasMetrics && !hasNotes;
+}
+
+function getVisibleHistoryDays() {
+  const days = [...state.days];
+  if (!isEmptyDayDraft(state.currentDay)) days.unshift(finalizePreviewDay(state.currentDay));
+  return days.sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''));
+}
+
 function renderRecentDays() {
-  const current = finalizePreviewDay(state.currentDay);
-  const recent = [current, ...state.days].sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || '')).slice(0, 5);
+  const recent = getVisibleHistoryDays().slice(0, 5);
   $('#recentDays').innerHTML = recent.length ? recent.map(dayHistoryItem).join('') : '<p class="muted">Пока пусто. Отмечай текущий день.</p>';
 }
 
@@ -1089,7 +1105,8 @@ function dayHistoryItem(day) {
           <div class="history-meta">${day.netXp} XP${day.positiveXp !== undefined ? ` • плюс ${day.positiveXp} • штраф ${day.penaltyXp}` : ''}</div>
         </div>
         <div class="history-actions">
-          ${isCurrent ? '<button class="mini-btn" type="button" data-tab-go="daily">Открыть</button>' : `<button class="mini-btn" type="button" data-delete-day="${escapeHTML(day.id)}">Удалить</button>`}
+          ${isCurrent ? '<button class="mini-btn" type="button" data-tab-go="daily">Открыть</button>' : ''}
+          <button class="mini-btn" type="button" data-delete-day="${escapeHTML(day.id)}">Удалить</button>
         </div>
       </div>
       ${notes ? `<div class="history-meta">${escapeHTML(notes)}</div>` : ''}
@@ -1115,8 +1132,7 @@ function weekHistoryItem(week) {
 }
 
 function renderHistory() {
-  const current = finalizePreviewDay(state.currentDay);
-  const days = [current, ...state.days].sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''));
+  const days = getVisibleHistoryDays();
   const weeks = [...state.weeks].sort((a, b) => (b.weekId || b.id || '').localeCompare(a.weekId || a.id || ''));
   $('#historyDays').innerHTML = days.length ? days.map(dayHistoryItem).join('') : '<p class="muted">Дней пока нет.</p>';
   $('#historyWeeks').innerHTML = weeks.length ? weeks.map(weekHistoryItem).join('') : '<p class="muted">Недель пока нет. Первая закроется в ночь с воскресенья на понедельник.</p>';
@@ -1299,8 +1315,7 @@ function copyText(text, successMessage) {
 }
 
 function buildHistorySummary() {
-  const days = [finalizePreviewDay(state.currentDay), ...state.days]
-    .sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''))
+  const days = getVisibleHistoryDays()
     .slice(0, 7)
     .reverse();
   const totals = getTotals();
@@ -1322,10 +1337,19 @@ function buildHistorySummary() {
 }
 
 function deleteDay(id) {
-  state.days = state.days.filter((day) => day.id !== id && day.metrics?.date !== id);
+  const targetId = String(id || '');
+  const isCurrent = targetId === state.currentDay?.date || targetId === state.currentDay?.id;
+  const ok = window.confirm(isCurrent ? 'Удалить текущий live-день? Галочки будут очищены.' : 'Удалить этот день из истории?');
+  if (!ok) return;
+
+  state.days = state.days.filter((day) => day.id !== targetId && day.metrics?.date !== targetId);
+  if (isCurrent) {
+    state.currentDay = createDayDraft(state.system.currentDate, state.system.dayCounter);
+    fillDailyForm();
+  }
   saveState();
   renderAll();
-  showToast('День удалён');
+  showToast(isCurrent ? 'Текущий день очищен' : 'День удалён');
 }
 
 function deleteWeek(id) {
@@ -1375,7 +1399,7 @@ function renderAll() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=0.6.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
+    navigator.serviceWorker.register('./sw.js?v=0.7.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
   }
 }
 

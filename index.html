@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: live-квесты, XP, ранги, боссы недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=0.6.0" />
+  <link rel="manifest" href="manifest.json?v=0.7.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=0.6.0" />
+  <link rel="stylesheet" href="styles.css?v=0.7.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,7 +17,7 @@
         <p class="eyebrow">личная система прокачки</p>
         <h1>PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v0.6</span>
+          <span id="appVersionValue">v0.7</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -160,17 +160,6 @@
 
           <section class="quest-grid" id="weeklyBossGrid"></section>
 
-          <section class="panel result-panel sticky-result">
-            <div>
-              <p class="eyebrow">Live XP</p>
-              <h3 id="weeklyResultTitle">0 XP — неделя не закрыта</h3>
-              <p id="weeklyResultDetails" class="muted">Отмечай условия боссов.</p>
-            </div>
-            <div class="form-actions">
-              <button class="primary-btn" type="submit">Зафиксировать</button>
-              <button class="ghost-btn" id="clearWeeklyBtn" type="button">Очистить неделю</button>
-            </div>
-          </section>
         </form>
       </section>
 
@@ -262,6 +251,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=0.6.0"></script>
+  <script src="app.js?v=0.7.0"></script>
 </body>
 </html>
