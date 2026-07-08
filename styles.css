@@ -416,3 +416,42 @@ input:focus, textarea:focus, select:focus { border-color: rgba(159, 232, 112, .7
   color: var(--accent);
   font-size: .92rem;
 }
+
+.brand-block {
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.runtime-strip span,
+.runtime-strip strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: rgba(16, 23, 34, .72);
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.runtime-strip strong {
+  color: var(--accent);
+  border-color: rgba(159, 232, 112, .28);
+  background: rgba(159, 232, 112, .08);
+}
+
+@media (max-width: 560px) {
+  .runtime-strip { width: 100%; }
+  .runtime-strip span,
+  .runtime-strip strong { flex: 1 1 auto; justify-content: center; }
+}

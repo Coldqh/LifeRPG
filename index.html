@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f14" />
-  <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: квесты, XP, ранги, боссы недели." />
+  <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: live-квесты, XP, ранги, боссы недели." />
   <title>PRIME RPG</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
@@ -13,9 +13,15 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
+      <div class="brand-block">
         <p class="eyebrow">личная система прокачки</p>
         <h1>PRIME RPG</h1>
+        <div class="runtime-strip" aria-label="Системная информация">
+          <span id="appVersionValue">v0.3</span>
+          <span id="moscowDateValue">—</span>
+          <span id="moscowWeekdayValue">—</span>
+          <strong id="moscowTimeValue">--:-- МСК</strong>
+        </div>
       </div>
       <div class="top-actions">
         <button class="ghost-btn" id="syncClockBtn" type="button">Синхронизация</button>
@@ -27,8 +33,8 @@
 
     <nav class="tabbar" aria-label="Главная навигация">
       <button class="tab-btn active" data-tab="dashboard" type="button">Пульт</button>
-      <button class="tab-btn" data-tab="daily" type="button">День</button>
-      <button class="tab-btn" data-tab="weekly" type="button">Неделя</button>
+      <button class="tab-btn" data-tab="daily" type="button">Квесты</button>
+      <button class="tab-btn" data-tab="weekly" type="button">Боссы</button>
       <button class="tab-btn" data-tab="history" type="button">История</button>
       <button class="tab-btn" data-tab="settings" type="button">Настройки</button>
     </nav>
@@ -47,13 +53,13 @@
         <section class="panel clock-panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Moscow clock</p>
+              <p class="eyebrow">Moscow runtime</p>
               <h3 id="currentDayMeta">День №1 • — • МСК</h3>
               <p id="currentWeekMeta" class="muted">Неделя №1</p>
             </div>
             <div class="mini-stack">
               <strong id="rolloverMeta">Следующая смена дня: 00:00 МСК</strong>
-              <span class="muted">галочки сохраняются сразу</span>
+              <span class="muted">автосохранение активно</span>
             </div>
           </div>
         </section>
@@ -78,7 +84,7 @@
           <article class="stat-card">
             <span>Текущая неделя</span>
             <strong id="weekXpValue">0 XP</strong>
-            <small id="weekReportsValue">0 отчётов</small>
+            <small id="weekReportsValue">0 дней</small>
           </article>
         </section>
 
@@ -119,9 +125,9 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Live daily report</p>
-                <h2 id="dailyLiveTitle">Текущий день</h2>
-                <p class="muted">Не вводишь дату вручную. Отмечаешь галочки — система сохраняет live. В 00:00 МСК день закрывается сам.</p>
+                <p class="eyebrow">Live quests</p>
+                <h2 id="dailyLiveTitle">Квесты текущего дня</h2>
+                <p class="muted">Дату не вводишь. Отмечаешь галочки — система сохраняет live. В 00:00 МСК день закрывается сам.</p>
               </div>
             </div>
 
@@ -149,35 +155,14 @@
             <div id="penaltyGrid" class="checkbox-grid"></div>
           </section>
 
-          <section class="panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Notes</p>
-                <h3>Короткие записи</h3>
-              </div>
-            </div>
-            <div class="form-grid notes-grid">
-              <label>WORK — что сделал<textarea name="workDone" rows="3"></textarea></label>
-              <label>WORK — что узнал<textarea name="workLearned" rows="3"></textarea></label>
-              <label>WORK — где тупил<textarea name="workStuck" rows="3"></textarea></label>
-              <label>CREATOR — проект<textarea name="creatorProject" rows="3" placeholder="PRIME RPG / LifeSim / MMOWorldSimulator..."></textarea></label>
-              <label>CREATOR — что сделал<textarea name="creatorDone" rows="3"></textarea></label>
-              <label>CALM — что заебало<textarea name="calmAnnoyed" rows="3"></textarea></label>
-              <label>CALM — что сделал нормально<textarea name="calmGood" rows="3"></textarea></label>
-              <label>MIND<textarea name="mindNote" rows="3"></textarea></label>
-              <label>CHARISMA<textarea name="charismaNote" rows="3"></textarea></label>
-              <label>MONEY<textarea name="moneyNote" rows="3"></textarea></label>
-            </div>
-          </section>
-
           <section class="panel result-panel sticky-result">
             <div>
-              <p class="eyebrow">Calculated live</p>
+              <p class="eyebrow">Live XP</p>
               <h3 id="dailyResultTitle">0 XP — Broken Day</h3>
               <p id="dailyResultDetails" class="muted">Отмечай квесты, система считает день.</p>
             </div>
             <div class="form-actions">
-              <button class="primary-btn" type="submit">Сохранить сейчас</button>
+              <button class="primary-btn" type="submit">Зафиксировать</button>
               <button class="ghost-btn" id="clearDailyBtn" type="button">Очистить день</button>
             </div>
           </section>
@@ -189,44 +174,23 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Live weekly report</p>
-                <h2 id="weeklyLiveTitle">Текущая неделя</h2>
-                <p class="muted">Боссы недели тоже live. В ночь с воскресенья на понедельник неделя закрывается и уходит в историю.</p>
+                <p class="eyebrow">Live bosses</p>
+                <h2 id="weeklyLiveTitle">Боссы текущей недели</h2>
+                <p class="muted">Отмечаешь условия боссов. В ночь с воскресенья на понедельник неделя закрывается и уходит в историю.</p>
               </div>
             </div>
           </section>
 
           <section class="quest-grid" id="weeklyBossGrid"></section>
 
-          <section class="panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Week notes</p>
-                <h3>Вывод недели</h3>
-              </div>
-            </div>
-            <div class="form-grid notes-grid">
-              <label>WORK — главные задачи<textarea name="workTasks" rows="3"></textarea></label>
-              <label>WORK — что понял<textarea name="workInsight" rows="3"></textarea></label>
-              <label>CREATOR — проект недели<textarea name="creatorProject" rows="3"></textarea></label>
-              <label>CREATOR — видимый результат<textarea name="creatorResult" rows="3"></textarea></label>
-              <label>CALM — что триггерило<textarea name="calmTriggers" rows="3"></textarea></label>
-              <label>CALM — что помогло<textarea name="calmHelped" rows="3"></textarea></label>
-              <label>SOCIAL — контакты<textarea name="socialContacts" rows="3"></textarea></label>
-              <label>MONEY — вывод<textarea name="moneyInsight" rows="3"></textarea></label>
-              <label>Итог недели<textarea name="weekSummary" rows="3"></textarea></label>
-              <label>Что улучшить<textarea name="improve" rows="3"></textarea></label>
-            </div>
-          </section>
-
           <section class="panel result-panel sticky-result">
             <div>
-              <p class="eyebrow">Calculated live</p>
+              <p class="eyebrow">Live XP</p>
               <h3 id="weeklyResultTitle">0 XP — неделя не закрыта</h3>
               <p id="weeklyResultDetails" class="muted">Отмечай условия боссов.</p>
             </div>
             <div class="form-actions">
-              <button class="primary-btn" type="submit">Сохранить сейчас</button>
+              <button class="primary-btn" type="submit">Зафиксировать</button>
               <button class="ghost-btn" id="clearWeeklyBtn" type="button">Очистить неделю</button>
             </div>
           </section>
@@ -238,7 +202,7 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">History</p>
-              <h2>История дней</h2>
+              <h2>История</h2>
             </div>
             <button class="ghost-btn" id="copySummaryBtn" type="button">Скопировать сводку</button>
           </div>
@@ -248,7 +212,7 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Weeks</p>
-              <h2>История недель</h2>
+              <h2>Закрытые недели</h2>
             </div>
           </div>
           <div id="historyWeeks" class="history-list"></div>
@@ -275,17 +239,6 @@
               <button class="danger-btn" id="resetBtn" type="button">Сбросить всё</button>
             </div>
           </form>
-        </section>
-
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Prompt</p>
-              <h2>Шаблон для ChatGPT</h2>
-            </div>
-            <button class="ghost-btn" id="copyPromptBtn" type="button">Скопировать</button>
-          </div>
-          <pre id="chatPrompt" class="prompt-box"></pre>
         </section>
       </section>
     </main>

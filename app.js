@@ -1,7 +1,9 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v2';
-const LEGACY_STORAGE_KEY = 'prime-rpg-state-v1';
+const STORAGE_KEY = 'prime-rpg-state-v3';
+const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
+const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
+const APP_VERSION = 'v0.3';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -84,7 +86,7 @@ const PENALTIES = [
   { id: 'insta_slip', text: 'инста-срыв 30+ минут', xp: -20 },
   { id: 'energy_2plus', text: '2+ энергетика', xp: -15 },
   { id: 'junk_food', text: 'сладкое/фастфуд вне плана', xp: -15 },
-  { id: 'missed_report', text: 'пропустил отчёт', xp: -10 },
+  { id: 'missed_report', text: 'день не был отмечен', xp: -10 },
   { id: 'late_sleep', text: 'лёг очень поздно без причины', xp: -15 },
   { id: 'anxiety_no_actions', text: 'день полностью в тревоге без действий', xp: -20 },
   { id: 'self_blame', text: 'сорвался и начал себя гнобить', xp: -10 }
@@ -163,7 +165,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 2,
+    version: 3,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -185,7 +187,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -200,7 +202,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 2,
+    version: 3,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
     days: Array.isArray(parsed.days) ? parsed.days : [],
@@ -225,7 +227,7 @@ function migrateState(parsed) {
 }
 
 function saveState() {
-  state.version = 2;
+  state.version = 3;
   state.system.lastSyncAt = nowMoscowStamp();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -259,7 +261,15 @@ function nowMoscowStamp(date = new Date()) {
 
 function moscowTimeText() {
   const p = getMoscowParts();
-  return `${p.hour}:${p.minute}:${p.second} МСК`;
+  return `${p.hour}:${p.minute} МСК`;
+}
+
+function moscowWeekdayText(date = new Date()) {
+  return new Intl.DateTimeFormat('ru-RU', { timeZone: MOSCOW_TZ, weekday: 'long' }).format(date);
+}
+
+function moscowFullDateText(date = new Date()) {
+  return new Intl.DateTimeFormat('ru-RU', { timeZone: MOSCOW_TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 }
 
 function parseISODate(iso) {
@@ -760,7 +770,7 @@ function isWeeklyMinimumPassed(days, weekDraft = state.currentWeek) {
 function buildAutoWeekSummary(days, calc) {
   const totalDaily = days.reduce((sum, day) => sum + Number(day.netXp || 0), 0);
   const best = [...days].sort((a, b) => Number(b.netXp || 0) - Number(a.netXp || 0))[0];
-  return `Автоотчёт: ${days.length}/7 дней, ${totalDaily} XP за дни, ${calc.totalXp} XP за боссов.${best ? ` Лучший день: ${formatDate(best.metrics?.date)} — ${best.netXp} XP.` : ''}`;
+  return `Автосводка: ${days.length}/7 дней, ${totalDaily} XP за дни, ${calc.totalXp} XP за боссов.${best ? ` Лучший день: ${formatDate(best.metrics?.date)} — ${best.netXp} XP.` : ''}`;
 }
 
 function buildAutoWeekImprove(days) {
@@ -821,21 +831,29 @@ function syncClock(showMessage = false) {
     fillDailyForm();
     fillWeeklyForm();
     renderAll();
-    showToast(showMessage ? 'Синхронизация: день/неделя обновлены по МСК' : 'День обновлён по МСК');
+    showToast(showMessage ? 'Синхронизация: календарь обновлён по МСК' : 'День обновлён по МСК');
   }
 }
 
 function updateClockUI() {
-  const today = state.currentDay?.date || todayMoscowISO();
+  const now = new Date();
+  const today = state.currentDay?.date || todayMoscowISO(now);
   const week = state.currentWeek || createWeekDraft(getWeekStart(today));
-  const dayText = `День №${state.currentDay?.dayNumber || 1} • ${formatDate(today)} • ${moscowTimeText()}`;
+  const weekday = moscowWeekdayText(now);
+  const dateText = moscowFullDateText(now);
+  const timeText = moscowTimeText();
+  const dayText = `День №${state.currentDay?.dayNumber || 1} • ${formatDate(today)} • ${weekday}`;
   const weekText = `Неделя №${getSeasonWeekNumber(week.weekId)} • ${formatDate(week.startDate)} — ${formatDate(week.endDate)}`;
   const nextText = `Следующая смена дня: 00:00 МСК`;
+  if ($('#appVersionValue')) $('#appVersionValue').textContent = APP_VERSION;
+  if ($('#moscowDateValue')) $('#moscowDateValue').textContent = dateText;
+  if ($('#moscowWeekdayValue')) $('#moscowWeekdayValue').textContent = weekday;
+  if ($('#moscowTimeValue')) $('#moscowTimeValue').textContent = timeText;
   if ($('#currentDayMeta')) $('#currentDayMeta').textContent = dayText;
   if ($('#currentWeekMeta')) $('#currentWeekMeta').textContent = weekText;
   if ($('#rolloverMeta')) $('#rolloverMeta').textContent = nextText;
-  if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `Текущий день — ${formatDate(today)}`;
-  if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Текущая неделя — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
+  if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `Квесты текущего дня — ${formatDate(today)}`;
+  if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Боссы текущей недели — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
 }
 
 function getTotals() {
@@ -890,7 +908,7 @@ function renderDashboard() {
   $('#lastDayRank').textContent = liveDaily.rank;
   $('#lastDayXp').textContent = `сегодня live: ${liveDaily.netXp} XP`;
   $('#weekXpValue').textContent = `${getWeekCurrentXp()} XP`;
-  $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 отчётов • boss ${liveWeek.totalXp} XP`;
+  $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 дней • boss ${liveWeek.totalXp} XP`;
 
   $('#statBars').innerHTML = STAT_KEYS.map((key) => {
     const value = totals.statXp[key] || 0;
@@ -934,7 +952,7 @@ function renderWeeklyMinimum() {
     { text: '3 тренировки', value: `${trainings}/3`, ok: trainings >= 3 },
     { text: '5 рабочих журналов', value: `${workLogs}/5`, ok: workLogs >= 5 },
     { text: '3 проектные сессии', value: `${projectSessions}/3`, ok: projectSessions >= 3 },
-    { text: '7 коротких отчётов', value: `${reports}/7`, ok: reports >= 7 },
+    { text: '7 активных дней', value: `${reports}/7`, ok: reports >= 7 },
     { text: 'инста под контролем', value: `${instaControl}/${reports || 7}`, ok: reports >= 1 && instaControl === reports },
     { text: 'вес + талия', value: bodyMeasure ? 'есть' : 'нет', ok: bodyMeasure },
     { text: '1 социальное действие', value: social ? 'есть' : 'нет', ok: social }
@@ -1015,12 +1033,12 @@ function renderSettings() {
   form.elements.seasonName.value = state.profile.seasonName || '';
   form.elements.startDate.value = state.profile.startDate || todayMoscowISO();
   form.elements.seasonGoal.value = state.profile.seasonGoal || '';
-  $('#chatPrompt').textContent = buildChatPrompt();
+  if ($('#chatPrompt')) $('#chatPrompt').textContent = buildChatPrompt();
 }
 
 function buildChatPrompt() {
   const totals = getTotals();
-  return `PRIME RPG — разбор текущего состояния
+  return `PRIME RPG — состояние
 
 Сезон: ${state.profile.seasonName || 'Москва / Сушка / Работа'}
 Дата МСК: ${formatDate(state.currentDay.date)}
@@ -1189,14 +1207,14 @@ function bindEvents() {
   $('#dailyForm').addEventListener('submit', (event) => {
     event.preventDefault();
     autosaveCurrentDay();
-    showToast('Текущий день сохранён в live-слоте');
+    showToast('Текущий день зафиксирован');
   });
   $('#weeklyForm').addEventListener('input', autosaveCurrentWeek);
   $('#weeklyForm').addEventListener('change', autosaveCurrentWeek);
   $('#weeklyForm').addEventListener('submit', (event) => {
     event.preventDefault();
     autosaveCurrentWeek();
-    showToast('Текущая неделя сохранена в live-слоте');
+    showToast('Текущая неделя зафиксирована');
   });
   $('#settingsForm').addEventListener('submit', saveSettings);
   $('#syncClockBtn').addEventListener('click', () => syncClock(true));
@@ -1204,7 +1222,7 @@ function bindEvents() {
   $('#clearWeeklyBtn').addEventListener('click', resetCurrentWeek);
   $('#exportBtn').addEventListener('click', exportData);
   $('#importFile').addEventListener('change', (event) => importData(event.target.files[0]));
-  $('#copyPromptBtn').addEventListener('click', () => copyText($('#chatPrompt').textContent, 'Промпт скопирован'));
+  if ($('#copyPromptBtn') && $('#chatPrompt')) $('#copyPromptBtn').addEventListener('click', () => copyText($('#chatPrompt').textContent, 'Промпт скопирован'));
   $('#copySummaryBtn').addEventListener('click', () => copyText(buildHistorySummary(), 'Сводка скопирована'));
   $('#history').addEventListener('click', handleHistoryClick);
   $('#dashboard').addEventListener('click', handleHistoryClick);
@@ -1213,6 +1231,7 @@ function bindEvents() {
     if (!ok) return;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY_V1);
     state = defaultState();
     saveState();
     fillDailyForm();
