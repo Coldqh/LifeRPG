@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — компактный habit tracker для личной RPG-системы: квесты, XP, ранги, недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=1.2.0" />
+  <link rel="manifest" href="manifest.json?v=1.3.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=1.2.0" />
+  <link rel="stylesheet" href="styles.css?v=1.3.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,19 +17,13 @@
         <p class="eyebrow">habit tracker</p>
         <h1><span aria-hidden="true">⚡</span> PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v1.2</span>
+          <span id="appVersionValue">v1.3</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
         </div>
       </div>
-      <div class="top-actions">
-        <button class="ghost-btn" id="syncClockBtn" type="button">🕒 Синхронизация</button>
-        <button class="ghost-btn update-btn" id="forceUpdateBtn" type="button">⬆️ Обновить версию</button>
-        <button class="ghost-btn" id="exportBtn" type="button">💾 Экспорт</button>
-        <label class="ghost-btn file-label" for="importFile">📥 Импорт</label>
-        <input id="importFile" type="file" accept="application/json" hidden />
-      </div>
+
     </header>
     <section class="update-banner" id="updateBanner" hidden>
       <div>
@@ -52,20 +46,6 @@
 
     <main>
       <section id="dashboard" class="tab-panel active">
-        <section class="panel clock-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">🕒 Moscow runtime</p>
-              <h3 id="currentDayMeta">День №1 • — • МСК</h3>
-              <p id="currentWeekMeta" class="muted">Неделя №1</p>
-            </div>
-            <div class="mini-stack">
-              <strong id="rolloverMeta">Следующая смена дня: 00:00 МСК</strong>
-              <span class="muted">автосохранение активно</span>
-            </div>
-          </div>
-        </section>
-
         <section class="grid stats-grid">
           <article class="stat-card">
             <span>🏅 Уровень</span>
@@ -190,6 +170,23 @@
         <section class="panel">
           <div class="section-head">
             <div>
+              <p class="eyebrow">🧰 System</p>
+              <h2>Данные и версия</h2>
+              <p class="muted">Синхронизация, обновление, backup и восстановление.</p>
+            </div>
+          </div>
+          <div class="form-actions wrap-actions">
+            <button class="ghost-btn" id="syncClockBtn" type="button">🕒 Синхронизация</button>
+            <button class="ghost-btn update-btn" id="forceUpdateBtn" type="button">⬆️ Обновить версию</button>
+            <button class="ghost-btn" id="exportBtn" type="button">💾 Экспорт</button>
+            <label class="ghost-btn file-label" for="importFile">📥 Импорт backup</label>
+            <input id="importFile" type="file" accept="application/json" hidden />
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
               <p class="eyebrow">📦 Quest import</p>
               <h2>Импорт задач</h2>
               <p class="muted" id="questImportInfo">Максимум 10 квестов на категорию.</p>
@@ -253,6 +250,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=1.2.0"></script>
+  <script src="app.js?v=1.3.0"></script>
 </body>
 </html>
