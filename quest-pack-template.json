@@ -1,21 +1,126 @@
 {
   "type": "prime-rpg-quest-pack",
-  "mode": "merge",
+  "version": 2,
+  "packName": "My PRIME RPG Quest Pack",
+  "mode": "replace_all",
+  "notes": "merge — добавить; replace — заменить категории из файла; replace_all — заменить весь список daily/weekly.",
+  "limits": {
+    "maxItemsPerCategory": 10,
+    "supportedStats": [
+      "BODY",
+      "FIGHTER",
+      "MIND",
+      "WORK",
+      "CREATOR",
+      "CALM",
+      "DISCIPLINE"
+    ]
+  },
   "dailyQuests": [
     {
       "category": "BODY",
       "title": "BODY",
       "stat": "BODY",
+      "maxXp": 40,
       "items": [
-        { "text": "мобилити 15 минут", "xp": 10, "stat": "BODY" }
+        {
+          "id": "body_training",
+          "text": "тренировка / движение 30+ минут",
+          "xp": 20,
+          "stat": "BODY"
+        },
+        {
+          "id": "body_food",
+          "text": "питание по плану",
+          "xp": 10,
+          "stat": "BODY"
+        },
+        {
+          "id": "body_steps",
+          "text": "10 000+ шагов",
+          "xp": 10,
+          "stat": "BODY"
+        }
+      ]
+    },
+    {
+      "category": "WORK",
+      "title": "WORK",
+      "stat": "WORK",
+      "maxXp": 40,
+      "items": [
+        {
+          "id": "work_main",
+          "text": "главная обязанность дня закрыта",
+          "xp": 25,
+          "stat": "WORK"
+        },
+        {
+          "id": "work_log",
+          "text": "записал, что сделал",
+          "xp": 10,
+          "stat": "WORK"
+        },
+        {
+          "id": "work_question",
+          "text": "задал вопрос / разобрал непонятное",
+          "xp": 5,
+          "stat": "MIND"
+        }
+      ]
+    }
+  ],
+  "weeklyQuests": [
+    {
+      "category": "BODY",
+      "title": "BODY",
+      "stat": "BODY",
+      "maxXp": 150,
+      "items": [
+        {
+          "id": "week_body_3_trainings",
+          "text": "3 тренировки за неделю",
+          "xp": 70,
+          "stat": "BODY"
+        },
+        {
+          "id": "week_body_5_food",
+          "text": "5 дней питания по плану",
+          "xp": 50,
+          "stat": "BODY"
+        },
+        {
+          "id": "week_body_steps_avg",
+          "text": "средние шаги 10к+",
+          "xp": 30,
+          "stat": "BODY"
+        }
       ]
     },
     {
       "category": "CREATOR",
       "title": "CREATOR",
       "stat": "CREATOR",
+      "maxXp": 150,
       "items": [
-        { "text": "30 минут PRIME RPG / LifeSim / проекта", "xp": 20, "stat": "CREATOR" }
+        {
+          "id": "week_creator_3_sessions",
+          "text": "3 проектные сессии",
+          "xp": 60,
+          "stat": "CREATOR"
+        },
+        {
+          "id": "week_creator_visible_result",
+          "text": "1 видимый результат",
+          "xp": 70,
+          "stat": "CREATOR"
+        },
+        {
+          "id": "week_creator_roadmap",
+          "text": "обновил список задач",
+          "xp": 20,
+          "stat": "CREATOR"
+        }
       ]
     }
   ]
