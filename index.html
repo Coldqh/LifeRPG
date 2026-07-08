@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f14" />
+  <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: квесты, XP, ранги, боссы недели." />
+  <title>PRIME RPG</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">личная система прокачки</p>
+        <h1>PRIME RPG</h1>
+      </div>
+      <div class="top-actions">
+        <button class="ghost-btn" id="exportBtn" type="button">Экспорт</button>
+        <label class="ghost-btn file-label" for="importFile">Импорт</label>
+        <input id="importFile" type="file" accept="application/json" hidden />
+      </div>
+    </header>
+
+    <nav class="tabbar" aria-label="Главная навигация">
+      <button class="tab-btn active" data-tab="dashboard" type="button">Пульт</button>
+      <button class="tab-btn" data-tab="daily" type="button">День</button>
+      <button class="tab-btn" data-tab="weekly" type="button">Неделя</button>
+      <button class="tab-btn" data-tab="history" type="button">История</button>
+      <button class="tab-btn" data-tab="settings" type="button">Настройки</button>
+    </nav>
+
+    <main>
+      <section id="dashboard" class="tab-panel active">
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow">Season 1</p>
+            <h2 id="seasonTitle">Москва / Сушка / Работа</h2>
+            <p class="muted">Минимум: BODY, WORK, CREATOR, CALM. Всё остальное — усиление билда.</p>
+          </div>
+          <div class="rank-badge" id="statusRank">Ordinary</div>
+        </div>
+
+        <section class="grid stats-grid">
+          <article class="stat-card">
+            <span>Уровень</span>
+            <strong id="levelValue">1</strong>
+            <small id="levelProgressText">0 / 1000 XP</small>
+            <div class="progress"><div id="levelProgressBar"></div></div>
+          </article>
+          <article class="stat-card">
+            <span>Всего XP</span>
+            <strong id="totalXpValue">0</strong>
+            <small>общий прогресс</small>
+          </article>
+          <article class="stat-card">
+            <span>Последний день</span>
+            <strong id="lastDayRank">—</strong>
+            <small id="lastDayXp">нет отчёта</small>
+          </article>
+          <article class="stat-card">
+            <span>Неделя</span>
+            <strong id="weekXpValue">0 XP</strong>
+            <small id="weekReportsValue">0 отчётов</small>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Character stats</p>
+              <h3>Статы</h3>
+            </div>
+          </div>
+          <div id="statBars" class="bars-list"></div>
+        </section>
+
+        <section class="grid two-col">
+          <article class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Week boss</p>
+                <h3>Минимум недели</h3>
+              </div>
+            </div>
+            <ul id="weeklyMinimumList" class="check-list"></ul>
+          </article>
+          <article class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Recent</p>
+                <h3>Последние дни</h3>
+              </div>
+            </div>
+            <div id="recentDays" class="history-list compact"></div>
+          </article>
+        </section>
+      </section>
+
+      <section id="daily" class="tab-panel">
+        <form id="dailyForm" class="form-stack">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Daily report</p>
+                <h2>Отчёт дня</h2>
+              </div>
+              <button class="ghost-btn" id="fillTodayBtn" type="button">Сегодня</button>
+            </div>
+
+            <div class="form-grid">
+              <label>Дата<input name="date" type="date" required /></label>
+              <label>День №<input name="dayNumber" type="number" min="1" placeholder="1" /></label>
+              <label>Вес<input name="weight" type="number" step="0.1" placeholder="85.0" /></label>
+              <label>Талия<input name="waist" type="number" step="0.1" placeholder="82" /></label>
+              <label>Сон<input name="sleep" type="number" step="0.25" placeholder="7" /></label>
+              <label>Шаги<input name="steps" type="number" step="100" placeholder="12000" /></label>
+              <label>Энергетик<input name="energyDrink" type="number" min="0" step="1" placeholder="0" /></label>
+              <label>Инста, мин<input name="instagram" type="number" min="0" step="1" placeholder="0" /></label>
+            </div>
+          </section>
+
+          <section class="quest-grid" id="dailyQuestGrid"></section>
+
+          <section class="panel danger-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Penalties</p>
+                <h3>Штрафы</h3>
+              </div>
+            </div>
+            <div id="penaltyGrid" class="checkbox-grid"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Notes</p>
+                <h3>Короткие записи</h3>
+              </div>
+            </div>
+            <div class="form-grid notes-grid">
+              <label>WORK — что сделал<textarea name="workDone" rows="3"></textarea></label>
+              <label>WORK — что узнал<textarea name="workLearned" rows="3"></textarea></label>
+              <label>WORK — где тупил<textarea name="workStuck" rows="3"></textarea></label>
+              <label>CREATOR — проект<textarea name="creatorProject" rows="3" placeholder="PRIME RPG / LifeSim / MMOWorldSimulator..."></textarea></label>
+              <label>CREATOR — что сделал<textarea name="creatorDone" rows="3"></textarea></label>
+              <label>CALM — что заебало<textarea name="calmAnnoyed" rows="3"></textarea></label>
+              <label>CALM — что сделал нормально<textarea name="calmGood" rows="3"></textarea></label>
+              <label>MIND<textarea name="mindNote" rows="3"></textarea></label>
+              <label>CHARISMA<textarea name="charismaNote" rows="3"></textarea></label>
+              <label>MONEY<textarea name="moneyNote" rows="3"></textarea></label>
+            </div>
+          </section>
+
+          <section class="panel result-panel sticky-result">
+            <div>
+              <p class="eyebrow">Calculated</p>
+              <h3 id="dailyResultTitle">0 XP — Broken Day</h3>
+              <p id="dailyResultDetails" class="muted">Отмечай квесты, система считает день.</p>
+            </div>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">Сохранить день</button>
+              <button class="ghost-btn" id="clearDailyBtn" type="button">Очистить</button>
+            </div>
+          </section>
+        </form>
+      </section>
+
+      <section id="weekly" class="tab-panel">
+        <form id="weeklyForm" class="form-stack">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Weekly report</p>
+                <h2>Отчёт недели</h2>
+              </div>
+              <button class="ghost-btn" id="fillWeekBtn" type="button">Текущая</button>
+            </div>
+            <div class="form-grid">
+              <label>Неделя №<input name="weekNumber" type="number" min="1" required /></label>
+              <label>Дата начала<input name="startDate" type="date" /></label>
+              <label>Дата конца<input name="endDate" type="date" /></label>
+              <label>Вес начало<input name="weightStart" type="number" step="0.1" /></label>
+              <label>Вес конец<input name="weightEnd" type="number" step="0.1" /></label>
+              <label>Талия начало<input name="waistStart" type="number" step="0.1" /></label>
+              <label>Талия конец<input name="waistEnd" type="number" step="0.1" /></label>
+              <label>Средние шаги<input name="avgSteps" type="number" step="100" /></label>
+            </div>
+          </section>
+
+          <section class="quest-grid" id="weeklyBossGrid"></section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Week notes</p>
+                <h3>Вывод недели</h3>
+              </div>
+            </div>
+            <div class="form-grid notes-grid">
+              <label>WORK — главные задачи<textarea name="workTasks" rows="3"></textarea></label>
+              <label>WORK — что понял<textarea name="workInsight" rows="3"></textarea></label>
+              <label>CREATOR — проект недели<textarea name="creatorProject" rows="3"></textarea></label>
+              <label>CREATOR — видимый результат<textarea name="creatorResult" rows="3"></textarea></label>
+              <label>CALM — что триггерило<textarea name="calmTriggers" rows="3"></textarea></label>
+              <label>CALM — что помогло<textarea name="calmHelped" rows="3"></textarea></label>
+              <label>SOCIAL — контакты<textarea name="socialContacts" rows="3"></textarea></label>
+              <label>MONEY — вывод<textarea name="moneyInsight" rows="3"></textarea></label>
+              <label>Итог недели<textarea name="weekSummary" rows="3"></textarea></label>
+              <label>Что улучшить<textarea name="improve" rows="3"></textarea></label>
+            </div>
+          </section>
+
+          <section class="panel result-panel sticky-result">
+            <div>
+              <p class="eyebrow">Calculated</p>
+              <h3 id="weeklyResultTitle">0 XP — неделя не закрыта</h3>
+              <p id="weeklyResultDetails" class="muted">Отмечай условия боссов.</p>
+            </div>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">Сохранить неделю</button>
+              <button class="ghost-btn" id="clearWeeklyBtn" type="button">Очистить</button>
+            </div>
+          </section>
+        </form>
+      </section>
+
+      <section id="history" class="tab-panel">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">History</p>
+              <h2>История дней</h2>
+            </div>
+            <button class="ghost-btn" id="copySummaryBtn" type="button">Скопировать сводку</button>
+          </div>
+          <div id="historyDays" class="history-list"></div>
+        </section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Weeks</p>
+              <h2>История недель</h2>
+            </div>
+          </div>
+          <div id="historyWeeks" class="history-list"></div>
+        </section>
+      </section>
+
+      <section id="settings" class="tab-panel">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h2>Профиль</h2>
+            </div>
+          </div>
+          <form id="settingsForm" class="form-stack">
+            <div class="form-grid">
+              <label>Имя персонажа<input name="playerName" type="text" placeholder="Cain / своё имя" /></label>
+              <label>Название сезона<input name="seasonName" type="text" placeholder="Москва / Сушка / Работа" /></label>
+              <label>Дата старта<input name="startDate" type="date" /></label>
+              <label>Цель сезона<input name="seasonGoal" type="text" placeholder="стабильный режим" /></label>
+            </div>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">Сохранить профиль</button>
+              <button class="danger-btn" id="resetBtn" type="button">Сбросить всё</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Prompt</p>
+              <h2>Шаблон для ChatGPT</h2>
+            </div>
+            <button class="ghost-btn" id="copyPromptBtn" type="button">Скопировать</button>
+          </div>
+          <pre id="chatPrompt" class="prompt-box"></pre>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
