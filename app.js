@@ -8,8 +8,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.0';
-const APP_CACHE_QUERY = '1.0.0';
+const APP_VERSION = 'v1.1';
+const APP_CACHE_QUERY = '1.1.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -439,7 +439,7 @@ function escapeHTML(value) {
 function categoryIcon(value) {
   const key = String(value || '').toUpperCase();
   const icons = {
-    BODY: '🥊',
+    BODY: '💪',
     FIGHTER: '🥊',
     WORK: '💼',
     CREATOR: '🛠️',
@@ -523,7 +523,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.0.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.1.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 

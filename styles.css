@@ -353,12 +353,12 @@ input:focus, textarea:focus, select:focus { border-color: rgba(159, 232, 112, .7
 
 .row-icon {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  border-radius: 8px;
-  background: rgba(81, 214, 255, .08);
-  border: 1px solid rgba(81, 214, 255, .12);
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  opacity: .92;
   font-size: .86rem;
+  transform: translateY(1px);
 }
 
 .update-banner {
@@ -414,7 +414,7 @@ input:focus, textarea:focus, select:focus { border-color: rgba(159, 232, 112, .7
   .banner-actions { width: 100%; }
   .banner-actions > * { flex: 1; }
   .card-art { width: 22px; height: 22px; margin-right: 6px; border-radius: 8px; }
-  .row-icon { width: 18px; height: 18px; font-size: .78rem; }
+  .row-icon { width: 15px; min-width: 15px; height: 15px; font-size: .75rem; }
 
   .tabbar {
     position: fixed;

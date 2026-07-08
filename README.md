@@ -1,4 +1,4 @@
-# PRIME RPG v1.0
+# PRIME RPG v1.1
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -46,14 +46,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.0"
+git commit -m "Update PRIME RPG v1.1"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.0.0
+https://coldqh.github.io/LifeRPG/?v=1.1.0
 ```
 
 ## Quest pack
@@ -87,3 +87,10 @@ https://coldqh.github.io/LifeRPG/?v=1.0.0
 ## Важно
 
 Данные лежат локально в браузере. Раз в неделю делай экспорт JSON.
+
+
+## v1.1
+
+- Убраны рамки вокруг маленьких emoji внутри строк.
+- BODY icon заменён на 💪.
+- Версия и PWA-кэш подняты до 1.1.0.
