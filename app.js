@@ -1,15 +1,16 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v10';
-const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v10';
+const STORAGE_KEY = 'prime-rpg-state-v14';
+const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v14';
+const LEGACY_STORAGE_KEY_V10 = 'prime-rpg-state-v10';
 const LEGACY_STORAGE_KEY_V8 = 'prime-rpg-state-v8';
 const LEGACY_STORAGE_KEY_V7 = 'prime-rpg-state-v7';
 const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.3';
-const APP_CACHE_QUERY = '1.3.0';
+const APP_VERSION = 'v1.4';
+const APP_CACHE_QUERY = '1.4.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -235,7 +236,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 10,
+    version: 14,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -260,7 +261,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V10) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -275,7 +276,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 10,
+    version: 14,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -307,7 +308,7 @@ function migrateState(parsed) {
 
 function saveState() {
   if (!state) return;
-  state.version = 10;
+  state.version = 14;
   state.system.lastSyncAt = nowMoscowStamp();
   const payload = JSON.stringify(state);
   try {
@@ -523,7 +524,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.3.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.4.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -662,6 +663,51 @@ function formatDate(iso) {
   if (!iso) return '—';
   const [year, month, day] = String(iso).split('-');
   return `${day}.${month}.${year}`;
+}
+
+
+function getMonthStart(iso) {
+  const [year, month] = String(iso).split('-');
+  return `${year}-${month}-01`;
+}
+
+function getMonthEnd(iso) {
+  const [year, month] = String(iso).split('-').map(Number);
+  return toISODate(new Date(Date.UTC(year, month, 0)));
+}
+
+function getMonthDays(iso) {
+  const start = getMonthStart(iso);
+  const end = getMonthEnd(iso);
+  const days = [];
+  let cursor = start;
+  while (cursor <= end) {
+    days.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return days;
+}
+
+function getRankClass(rank) {
+  const value = String(rank || '').toLowerCase();
+  if (value.includes('legendary')) return 'legendary';
+  if (value.includes('elite')) return 'elite';
+  if (value.includes('prime')) return 'prime';
+  if (value.includes('solid')) return 'solid';
+  if (value.includes('survived')) return 'survived';
+  if (value.includes('broken')) return 'broken';
+  return 'empty';
+}
+
+function shortRank(rank) {
+  const value = String(rank || '');
+  if (value.includes('Legendary')) return 'L';
+  if (value.includes('Elite')) return 'E';
+  if (value.includes('Prime')) return 'P';
+  if (value.includes('Solid')) return 'S';
+  if (value.includes('Survived')) return 'V';
+  if (value.includes('Broken')) return 'B';
+  return '—';
 }
 
 function renderDailyQuests() {
@@ -832,6 +878,66 @@ function updateWeeklyPreview() {
   // В недельной вкладке нет отдельного live-блока. Галочки сохраняются как pending XP до автозакрытия недели.
 }
 
+
+function buildAutoDaySummary(day, calc) {
+  const quests = getDailyQuests();
+  const categoryParts = quests.map((quest) => ({
+    key: quest.key,
+    title: quest.title,
+    xp: Number(calc.questXp?.[quest.key] || 0),
+    maxXp: Number(quest.maxXp || 0)
+  }));
+  const activeParts = categoryParts.filter((part) => part.xp > 0);
+  const top = [...activeParts].sort((a, b) => b.xp - a.xp)[0] || null;
+  const baseKeys = new Set(['body', 'work', 'creator', 'calm']);
+  const weak = categoryParts.filter((part) => baseKeys.has(part.key)).sort((a, b) => a.xp - b.xp)[0] || categoryParts.sort((a, b) => a.xp - b.xp)[0] || null;
+  const completedCount = Number(calc.completed?.length || 0);
+  const penaltiesCount = Number(calc.penalties?.length || 0);
+  const date = formatDate(day.metrics?.date || day.date || day.id);
+  const categoryLine = categoryParts
+    .filter((part) => part.xp > 0)
+    .map((part) => `${part.title} +${part.xp}`)
+    .join(' • ');
+
+  let line = `${date}: ${calc.rank}, ${calc.netXp} XP.`;
+  if (calc.netXp <= 0) line = `${date}: день закрыт пусто, ${calc.netXp} XP.`;
+  else if (top) line = `${date}: ${calc.rank}. Сильнее всего: ${top.title} +${top.xp} XP.`;
+
+  let focus = 'База держится. Следующий день — без усложнения.';
+  if (penaltiesCount > 0) focus = `Штрафы забрали ${Math.abs(Number(calc.penaltyXp || 0))} XP. Убрать главный слив.`;
+  else if (weak && weak.xp === 0) focus = `Просадка: ${weak.title}. Закрыть хотя бы 1 действие завтра.`;
+  else if (completedCount >= 8) focus = 'Сильный день. Завтра сохранить ритм, не разгонять хаос.';
+
+  return {
+    title: calc.rank,
+    line,
+    focus,
+    categoryLine: categoryLine || 'Нет закрытых категорий.',
+    date,
+    netXp: calc.netXp,
+    positiveXp: calc.positiveXp,
+    penaltyXp: calc.penaltyXp,
+    strongest: top?.title || '',
+    weakest: weak?.title || '',
+    completedCount,
+    penaltiesCount
+  };
+}
+
+function getDaySummary(day) {
+  if (day?.summary) return day.summary;
+  const calc = {
+    questXp: day?.questXp || {},
+    categoryXp: day?.categoryXp || {},
+    positiveXp: Number(day?.positiveXp || 0),
+    penaltyXp: Number(day?.penaltyXp || 0),
+    netXp: Number(day?.netXp || 0),
+    rank: day?.rank || getDailyRank(Number(day?.netXp || 0)),
+    completed: day?.completed || [],
+    penalties: day?.penalties || []
+  };
+  return buildAutoDaySummary(day || {}, calc);
+}
 function finalizeDay(draft, reason = 'midnight') {
   if (!draft || !draft.date) return null;
   const calc = calculateDailyFromDraft(draft);
@@ -857,6 +963,7 @@ function finalizeDay(draft, reason = 'midnight') {
     netXp: calc.netXp,
     rank: calc.rank
   };
+  day.summary = buildAutoDaySummary(day, calc);
   state.days = state.days.filter((item) => item.id !== day.id && item.metrics?.date !== day.id);
   state.days.push(day);
   state.days.sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
@@ -1109,6 +1216,8 @@ function renderDashboard() {
   }).join('');
 
   renderWeeklyMinimum();
+  renderMonthCalendar();
+  renderLatestDaySummary();
   renderRecentDays();
   updateClockUI();
 }
@@ -1146,18 +1255,85 @@ function renderWeeklyMinimum() {
   `).join('');
 }
 
+
+function renderMonthCalendar() {
+  const grid = $('#monthCalendar');
+  if (!grid) return;
+  const today = state.currentDay?.date || todayMoscowISO();
+  const monthDays = getMonthDays(today);
+  const firstOffset = getWeekDay(monthDays[0]) - 1;
+  const dayMap = new Map();
+  state.days.forEach((day) => {
+    const id = day.metrics?.date || day.date || day.id;
+    if (id) dayMap.set(id, day);
+  });
+  if (!isEmptyDayDraft(state.currentDay)) dayMap.set(state.currentDay.date, finalizePreviewDay(state.currentDay));
+
+  const blanks = Array.from({ length: firstOffset }, (_, index) => `<div class="calendar-cell is-blank" aria-hidden="true"></div>`).join('');
+  const cells = monthDays.map((iso) => {
+    const day = dayMap.get(iso);
+    const isToday = iso === today;
+    const isLive = day && iso === state.currentDay?.date;
+    const rank = day?.rank || '';
+    const cls = day ? getRankClass(rank) : 'empty';
+    const xp = day ? Number(day.netXp || 0) : null;
+    return `
+      <div class="calendar-cell rank-${cls}${isToday ? ' is-today' : ''}${isLive ? ' is-live' : ''}" title="${formatDate(iso)}${rank ? ` — ${rank}, ${xp} XP` : ''}">
+        <span>${Number(iso.slice(-2))}</span>
+        <strong>${day ? shortRank(rank) : ''}</strong>
+        ${day ? `<small>${xp}</small>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  const title = $('#monthCalendarTitle');
+  if (title) {
+    const monthText = new Intl.DateTimeFormat('ru-RU', { timeZone: MOSCOW_TZ, month: 'long', year: 'numeric' }).format(parseISODate(today));
+    title.textContent = `Календарь — ${monthText}`;
+  }
+  grid.innerHTML = blanks + cells;
+}
+
+function renderLatestDaySummary() {
+  const box = $('#latestDaySummary');
+  if (!box) return;
+  const latestClosed = [...state.days].sort((a, b) => (b.metrics?.date || b.id || '').localeCompare(a.metrics?.date || a.id || ''))[0];
+  if (!latestClosed) {
+    box.innerHTML = `<p class="muted">Первый итог появится после автоматического закрытия дня в 00:00 МСК.</p>`;
+    return;
+  }
+  const summary = getDaySummary(latestClosed);
+  box.innerHTML = `
+    <article class="summary-card rank-${getRankClass(summary.title)}">
+      <div class="summary-top">
+        <strong>${escapeHTML(summary.title)}</strong>
+        <span>${escapeHTML(summary.date)} • ${summary.netXp} XP</span>
+      </div>
+      <p>${escapeHTML(summary.line)}</p>
+      <p class="muted">${escapeHTML(summary.categoryLine)}</p>
+      <p class="summary-focus">${escapeHTML(summary.focus)}</p>
+    </article>
+  `;
+}
+
 function finalizePreviewDay(draft) {
   const calc = calculateDailyFromDraft(draft);
-  return {
+  const day = {
     id: draft.date,
     date: draft.date,
     metrics: { date: draft.date, dayNumber: draft.dayNumber, ...(draft.metrics || {}) },
     notes: { ...(draft.notes || {}) },
     completed: calc.completed,
     penalties: calc.penalties,
+    questXp: calc.questXp,
+    categoryXp: calc.categoryXp,
+    positiveXp: calc.positiveXp,
+    penaltyXp: calc.penaltyXp,
     netXp: calc.netXp,
     rank: calc.rank
   };
+  day.summary = buildAutoDaySummary(day, calc);
+  return day;
 }
 
 function isEmptyDayDraft(draft) {
@@ -1182,6 +1358,7 @@ function renderRecentDays() {
 function dayHistoryItem(day) {
   const isCurrent = day.id === state.currentDay?.date;
   const notes = [day.notes?.creatorProject, day.notes?.creatorDone, day.notes?.workDone].filter(Boolean).slice(0, 2).join(' • ');
+  const summary = getDaySummary(day);
   return `
     <article class="history-item">
       <div class="history-item-top">
@@ -1194,6 +1371,7 @@ function dayHistoryItem(day) {
           <button class="mini-btn" type="button" data-delete-day="${escapeHTML(day.id)}">Удалить</button>
         </div>
       </div>
+      ${summary?.focus ? `<div class="history-meta">${escapeHTML(summary.categoryLine)}<br>${escapeHTML(summary.focus)}</div>` : ''}
       ${notes ? `<div class="history-meta">${escapeHTML(notes)}</div>` : ''}
     </article>
   `;
@@ -1413,7 +1591,7 @@ function buildHistorySummary() {
     '',
     'Последние дни:'
   ];
-  days.forEach((day) => lines.push(`${formatDate(day.metrics?.date)} — ${day.netXp} XP — ${day.rank}`));
+  days.forEach((day) => { const summary = getDaySummary(day); lines.push(`${formatDate(day.metrics?.date)} — ${day.netXp} XP — ${day.rank}. ${summary.focus}`); });
   if (state.weeks.length) {
     lines.push('', 'Закрытые недели:');
     state.weeks.slice(-3).forEach((week) => lines.push(`Неделя ${week.metrics?.weekNumber || week.weekNumber}: ${week.dailyXp || 0} daily XP + ${week.totalXp} week XP — ${week.result}`));

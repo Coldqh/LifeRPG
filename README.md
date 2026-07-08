@@ -1,4 +1,4 @@
-# PRIME RPG v1.3
+# PRIME RPG v1.4
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -18,6 +18,17 @@
 - in-app уведомление о новой версии;
 - PWA/service worker с network-first стратегией.
 
+
+
+## v1.4
+
+- добавлен календарь месяца на профиле;
+- дни подсвечиваются по рангу: Broken / Survived / Solid / Prime / Elite / Legendary;
+- текущий live-день показывается в календаре как pending;
+- при автоматическом закрытии дня создаётся авто-итог;
+- авто-итог показывает XP, сильную категорию, просадку и короткий фокус на следующий день;
+- последний закрытый итог выводится на профиле;
+- итоги дня добавлены в историю и сводку.
 
 ## v1.3
 
@@ -54,14 +65,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.3"
+git commit -m "Update PRIME RPG v1.4"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.3.0
+https://coldqh.github.io/LifeRPG/?v=1.4.0
 ```
 
 ## Quest pack
