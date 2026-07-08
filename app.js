@@ -1,7 +1,9 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v15';
-const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v15';
+const STORAGE_KEY = 'prime-rpg-state-v16';
+const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v16';
+const LEGACY_STORAGE_KEY_V15 = 'prime-rpg-state-v15';
+const LEGACY_STORAGE_KEY_BACKUP_V15 = 'prime-rpg-state-backup-v15';
 const LEGACY_STORAGE_KEY_V14 = 'prime-rpg-state-v14';
 const LEGACY_STORAGE_KEY_BACKUP_V14 = 'prime-rpg-state-backup-v14';
 const LEGACY_STORAGE_KEY_V10 = 'prime-rpg-state-v10';
@@ -11,8 +13,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.5';
-const APP_CACHE_QUERY = '1.5.0';
+const APP_VERSION = 'v1.6';
+const APP_CACHE_QUERY = '1.6.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -21,60 +23,48 @@ const LEVELS = [0, 1000, 2200, 3600, 5200, 7000, 9000, 11500, 14500, 18000, 2200
 
 const DEFAULT_DAILY_QUESTS = [
   {
-    key: 'body', title: 'BODY', stat: 'BODY', maxXp: 40,
+    key: 'body', title: 'BODY', stat: 'BODY', maxXp: 30,
     items: [
-      { id: 'body_training', text: 'тренировка в зале / бокс / домашняя тренировка', xp: 15, stat: 'FIGHTER' },
-      { id: 'body_steps', text: 'шаги 12 000+', xp: 10, stat: 'BODY' },
-      { id: 'body_food', text: 'питание по плану', xp: 10, stat: 'BODY' },
-      { id: 'body_protein', text: 'белок 160+ г', xp: 5, stat: 'BODY' }
+      { id: 'body_move', text: 'движение 10+ минут', xp: 15, stat: 'BODY' },
+      { id: 'body_water', text: 'вода / базовая забота о теле', xp: 5, stat: 'BODY' },
+      { id: 'body_food_basic', text: 'один нормальный приём еды', xp: 10, stat: 'BODY' }
     ]
   },
   {
-    key: 'work', title: 'WORK', stat: 'WORK', maxXp: 40,
+    key: 'work', title: 'WORK', stat: 'WORK', maxXp: 30,
     items: [
-      { id: 'work_main', text: 'рабочий день / учёба / главная обязанность выполнена', xp: 20, stat: 'WORK' },
-      { id: 'work_log', text: 'записал, что сделал', xp: 5, stat: 'WORK' },
-      { id: 'work_learned', text: 'записал, что узнал', xp: 5, stat: 'MIND' },
-      { id: 'work_not_quit', text: 'не слился, когда было непонятно', xp: 5, stat: 'DISCIPLINE' },
-      { id: 'work_question', text: 'задал нормальный вопрос / закрыл мелкую задачу', xp: 5, stat: 'WORK' }
+      { id: 'work_main', text: 'главная обязанность дня выполнена', xp: 20, stat: 'WORK' },
+      { id: 'work_plan', text: 'записал 1 задачу / следующий шаг', xp: 5, stat: 'WORK' },
+      { id: 'work_note', text: 'записал 1 вывод дня', xp: 5, stat: 'MIND' }
     ]
   },
   {
-    key: 'creator', title: 'CREATOR', stat: 'CREATOR', maxXp: 40,
+    key: 'creator', title: 'CREATOR', stat: 'CREATOR', maxXp: 25,
     items: [
-      { id: 'creator_project30', text: '30+ минут проекта', xp: 20, stat: 'CREATOR' },
-      { id: 'creator_result', text: 'сделал видимый результат', xp: 10, stat: 'CREATOR' },
-      { id: 'creator_idea', text: 'записал идею / механику / структуру', xp: 5, stat: 'CREATOR' },
-      { id: 'creator_focus', text: 'не распылялся на 5 проектов сразу', xp: 5, stat: 'DISCIPLINE' }
+      { id: 'creator_15', text: '15+ минут проекта / творчества', xp: 15, stat: 'CREATOR' },
+      { id: 'creator_note', text: 'сохранил идею / результат', xp: 10, stat: 'CREATOR' }
     ]
   },
   {
-    key: 'calm', title: 'CALM', stat: 'CALM', maxXp: 30,
+    key: 'calm', title: 'CALM', stat: 'CALM', maxXp: 25,
     items: [
-      { id: 'calm_sleep', text: 'сон зафиксирован', xp: 5, stat: 'CALM' },
-      { id: 'calm_anxiety', text: 'тревога 1–10 записана', xp: 5, stat: 'CALM' },
-      { id: 'calm_mood', text: 'настроение 1–10 записано', xp: 5, stat: 'CALM' },
-      { id: 'calm_annoyed', text: 'написал, что именно заебало', xp: 5, stat: 'CALM' },
-      { id: 'calm_good', text: 'написал 1 нормальную вещь за день', xp: 5, stat: 'CALM' },
-      { id: 'calm_no_compare', text: 'не накрутил себя инстой/сравнением', xp: 5, stat: 'DISCIPLINE' }
+      { id: 'calm_check', text: 'отметил состояние дня', xp: 5, stat: 'CALM' },
+      { id: 'calm_pause', text: '5 минут без шума / пауза', xp: 10, stat: 'CALM' },
+      { id: 'calm_sleep', text: 'сон зафиксирован', xp: 10, stat: 'CALM' }
     ]
   },
   {
-    key: 'mind', title: 'MIND', stat: 'MIND', maxXp: 20,
+    key: 'mind', title: 'MIND', stat: 'MIND', maxXp: 15,
     items: [
-      { id: 'mind_reading', text: 'чтение 15+ минут', xp: 10, stat: 'MIND' },
-      { id: 'mind_learning', text: 'испанский / история / психология / аналитика 15+ минут', xp: 10, stat: 'MIND' }
+      { id: 'mind_10', text: '10+ минут чтения / обучения', xp: 15, stat: 'MIND' }
     ]
   },
   {
-    key: 'discipline', title: 'DISCIPLINE', stat: 'DISCIPLINE', maxXp: 30,
+    key: 'discipline', title: 'DISCIPLINE', stat: 'DISCIPLINE', maxXp: 15,
     items: [
-      { id: 'discipline_insta0', text: 'инста 0 минут', xp: 10, stat: 'DISCIPLINE' },
-      { id: 'discipline_energy1', text: 'энергетик максимум 1', xp: 10, stat: 'DISCIPLINE' },
-      { id: 'discipline_no_junk', text: 'без сладкого мусора / фастфуда / импульсивной херни', xp: 10, stat: 'DISCIPLINE' }
+      { id: 'discipline_no_scroll', text: 'без тупого залипания 30+ минут', xp: 15, stat: 'DISCIPLINE' }
     ]
   }
-
 ];
 
 const PENALTIES = [
@@ -89,45 +79,79 @@ const PENALTIES = [
 
 const WEEKLY_BOSSES = [
   {
-    key: 'bodyBoss', title: 'BODY', stat: 'BODY', maxXp: 130,
+    key: 'bodyWeek', title: 'BODY', stat: 'BODY', maxXp: 100,
     items: [
-      { id: 'body_3_trainings', text: '3 тренировки за неделю', xp: 50 },
-      { id: 'body_avg_steps', text: 'средние шаги 12к+', xp: 30 },
-      { id: 'body_food_5', text: 'питание 5/7 дней по плану', xp: 30 },
-      { id: 'body_photo', text: 'фото формы 1 раз', xp: 20 }
+      { id: 'body_week_3_move', text: '3 дня с движением', xp: 50 },
+      { id: 'body_week_5_food', text: '5 дней базовой заботы о теле', xp: 50 }
     ]
   },
   {
-    key: 'workBoss', title: 'WORK', stat: 'WORK', maxXp: 150,
+    key: 'workWeek', title: 'WORK', stat: 'WORK', maxXp: 100,
     items: [
-      { id: 'work_5_days', text: '5 рабочих дней закрыты', xp: 50 },
-      { id: 'work_5_logs', text: '5 рабочих журналов', xp: 30 },
-      { id: 'work_10_terms', text: 'выписал 10 новых терминов/процессов', xp: 20 },
-      { id: 'work_system', text: 'понял одну новую систему/процедуру', xp: 20 },
-      { id: 'work_conclusion', text: 'сделал вывод недели', xp: 30 }
+      { id: 'work_week_5_main', text: '5 главных обязанностей закрыты', xp: 60 },
+      { id: 'work_week_3_notes', text: '3 рабочих вывода записаны', xp: 40 }
     ]
   },
   {
-    key: 'creatorBoss', title: 'CREATOR', stat: 'CREATOR', maxXp: 150,
+    key: 'creatorWeek', title: 'CREATOR', stat: 'CREATOR', maxXp: 100,
     items: [
-      { id: 'creator_3_sessions', text: '3 сессии проекта по 30+ минут', xp: 40 },
-      { id: 'creator_visible_result', text: '1 видимый результат', xp: 50 },
-      { id: 'creator_roadmap', text: 'обновил roadmap / список задач', xp: 20 },
-      { id: 'creator_no_spread', text: 'не распылялся на всё сразу', xp: 20 },
-      { id: 'creator_showed_result', text: 'показал мне итог недели', xp: 20 }
+      { id: 'creator_week_3_sessions', text: '3 проектные сессии', xp: 60 },
+      { id: 'creator_week_result', text: '1 видимый результат недели', xp: 40 }
     ]
   },
   {
-    key: 'calmBoss', title: 'CALM', stat: 'CALM', maxXp: 150,
+    key: 'calmWeek', title: 'CALM', stat: 'CALM', maxXp: 100,
     items: [
-      { id: 'calm_sleep_7', text: 'сон записан 7/7 дней', xp: 30 },
-      { id: 'calm_anxiety_7', text: 'тревога записана 7/7 дней', xp: 30 },
-      { id: 'calm_no_spin_3', text: 'минимум 3 дня без сильной накрутки', xp: 30 },
-      { id: 'calm_insta_control', text: 'инста под контролем всю неделю', xp: 30 },
-      { id: 'calm_head_conclusion', text: 'сделал недельный вывод по голове', xp: 30 }
+      { id: 'calm_week_5_check', text: '5 дней отмечено состояние', xp: 50 },
+      { id: 'calm_week_3_pause', text: '3 дня с паузой без шума', xp: 50 }
     ]
   }
+];
 
+const DAILY_CHALLENGES = [
+  { id: 'morning_walk', title: 'Утренняя прогулка', text: 'утренняя прогулка 20+ минут', xp: 25, stat: 'BODY', icon: '🚶' },
+  { id: 'morning_run', title: 'Утренняя пробежка', text: 'лёгкая пробежка 10+ минут', xp: 40, stat: 'BODY', icon: '🏃' },
+  { id: 'steps_20k', title: '20K steps', text: '20 000+ шагов за день', xp: 60, stat: 'BODY', icon: '👟' },
+  { id: 'cold_shower', title: 'Холодный душ', text: 'холодный душ / холодное завершение', xp: 30, stat: 'DISCIPLINE', icon: '🚿' },
+  { id: 'deep_work_60', title: 'Deep work', text: '60 минут фокуса без переключения', xp: 50, stat: 'CREATOR', icon: '🎯' },
+  { id: 'reading_30', title: 'Чтение 30', text: '30+ минут чтения', xp: 30, stat: 'MIND', icon: '📚' },
+  { id: 'no_sugar_day', title: 'No sugar', text: 'день без сладкого мусора', xp: 35, stat: 'DISCIPLINE', icon: '🚫' },
+  { id: 'mobility_20', title: 'Mobility', text: '20 минут мобилити / растяжки', xp: 30, stat: 'BODY', icon: '🧘' },
+  { id: 'clean_room', title: 'Чистая база', text: 'уборка 15+ минут', xp: 25, stat: 'DISCIPLINE', icon: '🧹' },
+  { id: 'plan_tomorrow', title: 'План завтра', text: 'план завтрашнего дня из 3 пунктов', xp: 20, stat: 'DISCIPLINE', icon: '🗒️' },
+  { id: 'social_ping', title: 'Контакт', text: 'написать / поговорить с человеком без залипа', xp: 25, stat: 'CALM', icon: '💬' },
+  { id: 'learn_term', title: 'Новый термин', text: 'выучить и записать 1 новый термин', xp: 20, stat: 'MIND', icon: '🧠' },
+  { id: 'project_ship', title: 'Ship small', text: 'сделать маленький видимый результат в проекте', xp: 45, stat: 'CREATOR', icon: '🛠️' },
+  { id: 'breathing_10', title: 'Дыхание', text: '10 минут дыхания / спокойной паузы', xp: 25, stat: 'CALM', icon: '🌬️' },
+  { id: 'no_phone_60', title: 'No phone', text: '60 минут без телефона', xp: 35, stat: 'DISCIPLINE', icon: '📵' },
+  { id: 'protein_meal', title: 'Нормальная еда', text: 'собрать нормальный белковый приём еды', xp: 25, stat: 'BODY', icon: '🍗' },
+  { id: 'skill_drill', title: 'Skill drill', text: '20 минут отработки навыка', xp: 35, stat: 'MIND', icon: '⚙️' },
+  { id: 'money_check', title: 'Money check', text: 'записать траты / проверить деньги', xp: 20, stat: 'WORK', icon: '💸' },
+  { id: 'walk_after_meal', title: 'After meal walk', text: 'прогулка 15 минут после еды', xp: 25, stat: 'BODY', icon: '🚶' },
+  { id: 'one_hard_task', title: 'Hard task', text: 'закрыть одну неприятную мелкую задачу', xp: 35, stat: 'WORK', icon: '✅' }
+];
+
+const ACHIEVEMENTS = [
+  { id: 'first_step', icon: '👣', title: 'First Step', text: 'закрыть первый день', target: 1, calc: (ctx) => ctx.days.length },
+  { id: 'first_100', icon: '⚡', title: 'First 100', text: 'набрать 100 подтверждённого XP', target: 100, calc: (ctx) => ctx.confirmedXp },
+  { id: 'solid_day', icon: '✅', title: 'Solid Day', text: 'получить Solid Day или выше', target: 1, calc: (ctx) => ctx.days.some((d) => Number(d.netXp || 0) >= 101) ? 1 : 0 },
+  { id: 'prime_day', icon: '🔷', title: 'Prime Day', text: 'получить Prime Day или выше', target: 1, calc: (ctx) => ctx.days.some((d) => Number(d.netXp || 0) >= 151) ? 1 : 0 },
+  { id: 'elite_day', icon: '🏆', title: 'Elite Day', text: 'получить Elite Day или выше', target: 1, calc: (ctx) => ctx.days.some((d) => Number(d.netXp || 0) >= 201) ? 1 : 0 },
+  { id: 'streak_3', icon: '🔥', title: '3-Day Streak', text: '3 активных дня подряд', target: 3, calc: (ctx) => getBestActiveStreak(ctx.days) },
+  { id: 'streak_7', icon: '🧱', title: '7-Day Streak', text: '7 активных дней подряд', target: 7, calc: (ctx) => getBestActiveStreak(ctx.days) },
+  { id: 'no_zero_week', icon: '📅', title: 'No Zero Week', text: '7 дней недели с XP выше 0', target: 1, calc: (ctx) => hasNoZeroWeek(ctx.days) ? 1 : 0 },
+  { id: 'body_starter', icon: '💪', title: 'Body Starter', text: '10 BODY-действий', target: 10, calc: (ctx) => countCompletedByPrefix(ctx.days, ['body_']) },
+  { id: 'work_mode', icon: '💼', title: 'Work Mode', text: '10 WORK-действий', target: 10, calc: (ctx) => countCompletedByPrefix(ctx.days, ['work_']) },
+  { id: 'creator_spark', icon: '🛠️', title: 'Creator Spark', text: '7 CREATOR-действий', target: 7, calc: (ctx) => countCompletedByPrefix(ctx.days, ['creator_']) },
+  { id: 'calm_base', icon: '🧘', title: 'Calm Base', text: '10 CALM-действий', target: 10, calc: (ctx) => countCompletedByPrefix(ctx.days, ['calm_']) },
+  { id: 'mind_online', icon: '📚', title: 'Mind Online', text: '5 MIND-действий', target: 5, calc: (ctx) => countCompletedByPrefix(ctx.days, ['mind_']) },
+  { id: 'discipline_core', icon: '⚡', title: 'Discipline Core', text: '7 DISCIPLINE-действий', target: 7, calc: (ctx) => countCompletedByPrefix(ctx.days, ['discipline_']) },
+  { id: 'challenge_1', icon: '🎲', title: 'Challenge Accepted', text: 'закрыть первый челлендж', target: 1, calc: (ctx) => ctx.challengeWins },
+  { id: 'challenge_5', icon: '🎯', title: 'Challenge Hunter', text: 'закрыть 5 челленджей', target: 5, calc: (ctx) => ctx.challengeWins },
+  { id: 'week_1', icon: '📆', title: 'Weekly Starter', text: 'закрыть первую неделю', target: 1, calc: (ctx) => ctx.weeks.length },
+  { id: 'prime_week', icon: '💎', title: 'Prime Week', text: '1000+ XP за неделю', target: 1, calc: (ctx) => ctx.weeks.some((w) => Number(w.dailyXp || 0) + Number(w.totalXp || 0) >= 1000) ? 1 : 0 },
+  { id: 'recovery', icon: '🩹', title: 'Recovery', text: 'после Broken Day сделать Solid Day', target: 1, calc: (ctx) => hasRecoveryDay(ctx.days) ? 1 : 0 },
+  { id: 'level_5', icon: '🚀', title: 'Level 5', text: 'достичь 5 уровня', target: 5, calc: (ctx) => getLevel(ctx.confirmedXp).level }
 ];
 
 const DAILY_METRIC_FIELDS = [];
@@ -238,7 +262,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 15,
+    version: 16,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -263,7 +287,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_BACKUP_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_V10) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V15) || localStorage.getItem(LEGACY_STORAGE_KEY_BACKUP_V15) || localStorage.getItem(LEGACY_STORAGE_KEY_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_BACKUP_V14) || localStorage.getItem(LEGACY_STORAGE_KEY_V10) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -278,7 +302,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 15,
+    version: 16,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -310,7 +334,7 @@ function migrateState(parsed) {
 
 function saveState() {
   if (!state) return;
-  state.version = 15;
+  state.version = 16;
   state.system.lastSyncAt = nowMoscowStamp();
   const payload = JSON.stringify(state);
   try {
@@ -526,7 +550,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.5.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.6.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -548,6 +572,8 @@ function createDayDraft(date, dayNumber) {
     notes: {},
     completed: [],
     penalties: [],
+    challengeCompleted: false,
+    challengeId: getDailyChallenge(date).id,
     status: 'active'
   };
 }
@@ -576,6 +602,8 @@ function dayToDraft(day) {
     notes: { ...day.notes },
     completed: [...(day.completed || [])],
     penalties: [...(day.penalties || [])],
+    challengeCompleted: Boolean(day.challenge?.completed || day.challengeCompleted),
+    challengeId: day.challenge?.id || day.challengeId || getDailyChallenge(day.metrics?.date || day.date || day.id).id,
     status: 'active'
   };
 }
@@ -597,12 +625,21 @@ function calculateDailyFromDraft(draft = state.currentDay) {
     questXp[quest.key] = Math.min(sum, quest.maxXp);
   });
 
+  const challenge = getChallengeResult(draft);
+  if (challenge.completed) {
+    questXp.challenge = challenge.xp;
+    categoryXp[challenge.stat] = (categoryXp[challenge.stat] || 0) + challenge.xp;
+  } else {
+    questXp.challenge = 0;
+  }
+
   const positiveXp = Object.values(questXp).reduce((sum, value) => sum + value, 0);
   const penaltyXp = PENALTIES.reduce((sum, item) => penaltySet.has(item.id) ? sum + item.xp : sum, 0);
   const netXp = positiveXp + penaltyXp;
   return {
     questXp,
     categoryXp,
+    challenge,
     positiveXp,
     penaltyXp,
     netXp,
@@ -712,6 +749,79 @@ function shortRank(rank) {
   return '—';
 }
 
+
+function stableHash(value) {
+  return String(value || '').split('').reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
+}
+
+function getDailyChallenge(date = state?.currentDay?.date || todayMoscowISO()) {
+  const index = Math.abs(stableHash(date)) % DAILY_CHALLENGES.length;
+  return DAILY_CHALLENGES[index];
+}
+
+function isChallengeCompleted(draft = state.currentDay) {
+  return Boolean(draft?.challengeCompleted || draft?.challenge?.completed);
+}
+
+function getChallengeResult(draft = state.currentDay) {
+  const challenge = getDailyChallenge(draft?.date || todayMoscowISO());
+  const completed = isChallengeCompleted(draft);
+  return { ...challenge, completed, xp: completed ? Number(challenge.xp || 0) : 0 };
+}
+
+function getAchievementContext() {
+  const days = [...state.days].sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
+  const confirmedXp = days.reduce((sum, day) => sum + Number(day.netXp || 0), 0) + state.weeks.reduce((sum, week) => sum + Number(week.totalXp || 0), 0);
+  const challengeWins = days.filter((day) => day.challenge?.completed).length;
+  return { days, weeks: state.weeks || [], confirmedXp, challengeWins };
+}
+
+function countCompletedByPrefix(days, prefixes) {
+  return days.reduce((sum, day) => sum + (day.completed || []).filter((id) => prefixes.some((prefix) => String(id).startsWith(prefix))).length, 0);
+}
+
+function getBestActiveStreak(days) {
+  const activeDates = new Set(days.filter((day) => Number(day.netXp || 0) > 0).map((day) => day.metrics?.date || day.date || day.id));
+  const sorted = [...activeDates].sort();
+  let best = 0;
+  let current = 0;
+  let previous = null;
+  sorted.forEach((date) => {
+    current = previous && diffDays(previous, date) === 1 ? current + 1 : 1;
+    best = Math.max(best, current);
+    previous = date;
+  });
+  return best;
+}
+
+function hasNoZeroWeek(days) {
+  const byWeek = new Map();
+  days.forEach((day) => {
+    const date = day.metrics?.date || day.date || day.id;
+    const week = getWeekStart(date);
+    if (!byWeek.has(week)) byWeek.set(week, []);
+    byWeek.get(week).push(day);
+  });
+  return [...byWeek.values()].some((items) => items.length >= 7 && items.every((day) => Number(day.netXp || 0) > 0));
+}
+
+function hasRecoveryDay(days) {
+  const sorted = [...days].sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
+  for (let i = 1; i < sorted.length; i += 1) {
+    if (Number(sorted[i - 1].netXp || 0) <= 50 && Number(sorted[i].netXp || 0) >= 101) return true;
+  }
+  return false;
+}
+
+function getAchievementStates() {
+  const ctx = getAchievementContext();
+  return ACHIEVEMENTS.map((achievement) => {
+    const value = Math.max(0, Number(achievement.calc(ctx) || 0));
+    const unlocked = value >= achievement.target;
+    return { ...achievement, value, unlocked, progress: Math.min(100, (value / achievement.target) * 100) };
+  });
+}
+
 function renderDailyQuests() {
   const grid = $('#dailyQuestGrid');
   if (!grid) return;
@@ -780,9 +890,20 @@ function fillDailyForm() {
   });
   getDailyQuests().flatMap((quest) => quest.items).forEach((item) => setChecked(form, `q_${item.id}`, draft.completed?.includes(item.id)));
   PENALTIES.forEach((item) => setChecked(form, `p_${item.id}`, draft.penalties?.includes(item.id)));
+  fillChallengeForm();
   suppressAutosave = false;
   updateDailyPreview();
   updateClockUI();
+}
+
+function fillChallengeForm() {
+  const form = $('#challengeForm');
+  if (!form) return;
+  suppressAutosave = true;
+  form.reset();
+  const input = form.elements.challenge_done;
+  if (input) input.checked = isChallengeCompleted(state.currentDay);
+  suppressAutosave = false;
 }
 
 function fillWeeklyForm() {
@@ -826,6 +947,10 @@ function collectCurrentDayFromForm() {
   PENALTIES.forEach((item) => {
     if (checked(form, `p_${item.id}`)) draft.penalties.push(item.id);
   });
+  const challenge = getDailyChallenge(draft.date);
+  const challengeForm = $('#challengeForm');
+  draft.challengeId = challenge.id;
+  draft.challengeCompleted = Boolean(challengeForm?.elements?.challenge_done?.checked);
   return draft;
 }
 
@@ -857,6 +982,7 @@ function autosaveCurrentDay() {
   saveState();
   updateDailyPreview();
   renderDashboard();
+  renderChallenges();
 }
 
 function autosaveCurrentWeek() {
@@ -958,6 +1084,7 @@ function finalizeDay(draft, reason = 'midnight') {
     notes: { ...(draft.notes || {}) },
     completed: calc.completed,
     penalties: calc.penalties,
+    challenge: calc.challenge,
     questXp: calc.questXp,
     categoryXp: calc.categoryXp,
     positiveXp: calc.positiveXp,
@@ -1021,11 +1148,11 @@ function buildWeekMetrics(draft, days) {
     startDate: draft.weekId,
     endDate: getWeekEnd(draft.weekId),
     reports: days.length,
-    trainingCount: days.filter((day) => day.completed?.includes('body_training')).length,
-    foodPlanDays: days.filter((day) => day.completed?.includes('body_food')).length,
-    workJournals: days.filter((day) => day.completed?.includes('work_log')).length,
-    projectSessions: days.filter((day) => day.completed?.includes('creator_project30')).length,
-    instagramControlDays: days.filter((day) => !day.penalties?.includes('insta_slip')).length
+    movementDays: days.filter((day) => hasAnyCompleted(day, ['body_move', 'body_training'])).length,
+    workMainDays: days.filter((day) => hasAnyCompleted(day, ['work_main'])).length,
+    workNotes: days.filter((day) => hasAnyCompleted(day, ['work_note', 'work_log'])).length,
+    projectSessions: days.filter((day) => hasAnyCompleted(day, ['creator_15', 'creator_project30'])).length,
+    calmChecks: days.filter((day) => hasAnyCompleted(day, ['calm_check', 'calm_mood', 'calm_anxiety'])).length
   };
 }
 
@@ -1044,13 +1171,17 @@ function getClosedDaysInWeek(weekId) {
     .sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
 }
 
+function hasAnyCompleted(day, ids) {
+  return ids.some((id) => day.completed?.includes(id));
+}
+
 function isWeeklyMinimumPassed(days) {
   const reports = days.length;
-  const trainings = days.filter((day) => day.completed?.includes('body_training')).length;
-  const workLogs = days.filter((day) => day.completed?.includes('work_log')).length;
-  const projectSessions = days.filter((day) => day.completed?.includes('creator_project30')).length;
-  const instaControl = days.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports;
+  const movement = days.filter((day) => hasAnyCompleted(day, ['body_move', 'body_training'])).length;
+  const workMain = days.filter((day) => hasAnyCompleted(day, ['work_main'])).length;
+  const projectSessions = days.filter((day) => hasAnyCompleted(day, ['creator_15', 'creator_project30'])).length;
+  const calmChecks = days.filter((day) => hasAnyCompleted(day, ['calm_check', 'calm_mood', 'calm_anxiety'])).length;
+  return movement >= 3 && workMain >= 5 && projectSessions >= 3 && calmChecks >= 5 && reports >= 7;
 }
 
 function buildAutoWeekSummary(days, calc) {
@@ -1218,7 +1349,6 @@ function renderDashboard() {
   }).join('');
 
   renderWeeklyMinimum();
-  renderLatestDaySummary();
   renderRecentDays();
   updateClockUI();
 }
@@ -1238,17 +1368,17 @@ function renderWeeklyMinimum() {
     ? [...days, finalizePreviewDay(state.currentDay)]
     : days;
   const reports = includeCurrent.length;
-  const trainings = includeCurrent.filter((day) => day.completed?.includes('body_training')).length;
-  const workLogs = includeCurrent.filter((day) => day.completed?.includes('work_log')).length;
-  const projectSessions = includeCurrent.filter((day) => day.completed?.includes('creator_project30')).length;
-  const instaControl = includeCurrent.filter((day) => !day.penalties?.includes('insta_slip')).length;
+  const movement = includeCurrent.filter((day) => hasAnyCompleted(day, ['body_move', 'body_training'])).length;
+  const workMain = includeCurrent.filter((day) => hasAnyCompleted(day, ['work_main'])).length;
+  const projectSessions = includeCurrent.filter((day) => hasAnyCompleted(day, ['creator_15', 'creator_project30'])).length;
+  const calmChecks = includeCurrent.filter((day) => hasAnyCompleted(day, ['calm_check', 'calm_mood', 'calm_anxiety'])).length;
 
   const items = [
-    { text: '3 тренировки', value: `${trainings}/3`, ok: trainings >= 3 },
-    { text: '5 рабочих журналов', value: `${workLogs}/5`, ok: workLogs >= 5 },
+    { text: '3 дня с движением', value: `${movement}/3`, ok: movement >= 3 },
+    { text: '5 главных обязанностей', value: `${workMain}/5`, ok: workMain >= 5 },
     { text: '3 проектные сессии', value: `${projectSessions}/3`, ok: projectSessions >= 3 },
-    { text: '7 активных дней', value: `${reports}/7`, ok: reports >= 7 },
-    { text: 'инста под контролем', value: `${instaControl}/${reports || 7}`, ok: reports >= 1 && instaControl === reports }
+    { text: '5 check-in по спокойствию', value: `${calmChecks}/5`, ok: calmChecks >= 5 },
+    { text: '7 активных дней', value: `${reports}/7`, ok: reports >= 7 }
   ];
 
   $('#weeklyMinimumList').innerHTML = items.map((item) => `
@@ -1295,6 +1425,67 @@ function renderMonthCalendar() {
   grid.innerHTML = blanks + cells;
 }
 
+
+function renderChallenges() {
+  const box = $('#dailyChallengeBox');
+  const list = $('#challengeLibrary');
+  if (!box && !list) return;
+  const challenge = getDailyChallenge(state.currentDay?.date || todayMoscowISO());
+  const completed = isChallengeCompleted(state.currentDay);
+  if (box) {
+    box.innerHTML = `
+      <article class="challenge-card ${completed ? 'is-complete' : ''}">
+        <div class="challenge-main">
+          <div class="challenge-icon" aria-hidden="true">${escapeHTML(challenge.icon || '🎲')}</div>
+          <div>
+            <p class="eyebrow">Сегодняшний челлендж</p>
+            <h3>${escapeHTML(challenge.title)}</h3>
+            <p class="muted">${escapeHTML(challenge.text)}</p>
+          </div>
+        </div>
+        <label class="challenge-check">
+          <input name="challenge_done" type="checkbox" ${completed ? 'checked' : ''} />
+          <span>${completed ? 'Готово' : 'Закрыть'}</span>
+          <strong>+${Number(challenge.xp || 0)} XP</strong>
+        </label>
+      </article>
+    `;
+  }
+  if (list) {
+    list.innerHTML = DAILY_CHALLENGES.map((item) => `
+      <article class="mini-library-card ${item.id === challenge.id ? 'is-current' : ''}">
+        <span aria-hidden="true">${escapeHTML(item.icon || '🎲')}</span>
+        <div>
+          <strong>${escapeHTML(item.title)}</strong>
+          <small>${escapeHTML(item.text)} • +${Number(item.xp || 0)} XP</small>
+        </div>
+      </article>
+    `).join('');
+  }
+}
+
+function renderAchievements() {
+  const grid = $('#achievementGrid');
+  const summary = $('#achievementSummary');
+  if (!grid) return;
+  const achievements = getAchievementStates();
+  const unlocked = achievements.filter((item) => item.unlocked).length;
+  if (summary) summary.textContent = `${unlocked}/${achievements.length} открыто`;
+  grid.innerHTML = achievements.map((item) => `
+    <article class="achievement-card ${item.unlocked ? 'is-unlocked' : 'is-locked'}">
+      <div class="achievement-icon" aria-hidden="true">${escapeHTML(item.icon)}</div>
+      <div>
+        <div class="achievement-title">
+          <strong>${escapeHTML(item.title)}</strong>
+          <span>${item.unlocked ? 'открыто' : `${Math.min(item.value, item.target)}/${item.target}`}</span>
+        </div>
+        <p>${escapeHTML(item.text)}</p>
+        <div class="mini-progress"><div style="width:${item.progress}%"></div></div>
+      </div>
+    </article>
+  `).join('');
+}
+
 function renderLatestDaySummary() {
   const box = $('#latestDaySummary');
   if (!box) return;
@@ -1326,6 +1517,7 @@ function finalizePreviewDay(draft) {
     notes: { ...(draft.notes || {}) },
     completed: calc.completed,
     penalties: calc.penalties,
+    challenge: calc.challenge,
     questXp: calc.questXp,
     categoryXp: calc.categoryXp,
     positiveXp: calc.positiveXp,
@@ -1465,9 +1657,23 @@ function toggleMobileMenu() {
 }
 
 function switchTab(tabId) {
+  const current = $('.tab-panel.active');
+  const next = document.getElementById(tabId);
+  if (!next || current === next) {
+    closeMobileMenu();
+    return;
+  }
   $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
-  $$('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === tabId));
+  if (current) {
+    current.classList.remove('active');
+    current.classList.add('leaving');
+    window.setTimeout(() => current.classList.remove('leaving'), 240);
+  }
+  next.classList.add('active', 'entering');
+  window.setTimeout(() => next.classList.remove('entering'), 260);
   if (tabId === 'calendar') renderMonthCalendar();
+  if (tabId === 'challenges') renderChallenges();
+  if (tabId === 'achievements') renderAchievements();
   closeMobileMenu();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1689,6 +1895,8 @@ function resetCurrentWeek() {
 function renderAll() {
   renderDashboard();
   renderMonthCalendar();
+  renderChallenges();
+  renderAchievements();
   renderHistory();
   renderSettings();
   updateDailyPreview();
@@ -1743,6 +1951,15 @@ function bindEvents() {
       event.preventDefault();
       autosaveCurrentWeek();
       showToast('Текущая неделя зафиксирована');
+    });
+  }
+  const challengeForm = $('#challengeForm');
+  if (challengeForm) {
+    challengeForm.addEventListener('change', autosaveCurrentDay);
+    challengeForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      autosaveCurrentDay();
+      showToast('Челлендж сохранён');
     });
   }
   if ($('#settingsForm')) $('#settingsForm').addEventListener('submit', saveSettings);

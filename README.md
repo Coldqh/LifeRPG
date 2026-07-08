@@ -1,4 +1,4 @@
-# PRIME RPG v1.5
+# PRIME RPG v1.6
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -21,7 +21,7 @@
 
 
 
-## v1.5
+## v1.6
 
 - календарь вынесен в отдельную вкладку `Календарь`;
 - на ПК вкладки остаются сверху;
@@ -68,14 +68,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.5"
+git commit -m "Update PRIME RPG v1.6"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.5.0
+https://coldqh.github.io/LifeRPG/?v=1.6.0
 ```
 
 ## Quest pack

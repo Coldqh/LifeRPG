@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b0f14" />
   <meta name="description" content="PRIME RPG — компактный habit tracker для личной RPG-системы: квесты, XP, ранги, недели." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=1.5.0" />
+  <link rel="manifest" href="manifest.json?v=1.6.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=1.5.0" />
+  <link rel="stylesheet" href="styles.css?v=1.6.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,7 +17,7 @@
         <p class="eyebrow">habit tracker</p>
         <h1><span aria-hidden="true">⚡</span> PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v1.5</span>
+          <span id="appVersionValue">v1.6</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -42,6 +42,8 @@
       <button class="tab-btn" data-tab="daily" type="button">📅 День</button>
       <button class="tab-btn" data-tab="weekly" type="button">📅 Неделя</button>
       <button class="tab-btn" data-tab="calendar" type="button">🗓️ Календарь</button>
+      <button class="tab-btn" data-tab="achievements" type="button">🏆 Достижения</button>
+      <button class="tab-btn" data-tab="challenges" type="button">🎲 Челленджи</button>
       <button class="tab-btn" data-tab="history" type="button">📈 История</button>
       <button class="tab-btn" data-tab="settings" type="button">⚙️ Настройки</button>
     </nav>
@@ -73,17 +75,6 @@
           </article>
         </section>
 
-        <section class="grid dashboard-addons">
-          <article class="panel summary-panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">🧾 Auto summary</p>
-                <h3>Последний итог дня</h3>
-              </div>
-            </div>
-            <div id="latestDaySummary" class="latest-summary"></div>
-          </article>
-        </section>
 
         <section class="panel">
           <div class="section-head">
@@ -176,6 +167,42 @@
             <span><i class="rank-prime"></i>Prime+</span>
             <span><i class="rank-broken"></i>Broken</span>
           </div>
+        </section>
+      </section>
+
+      <section id="achievements" class="tab-panel">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">🏆 Achievements</p>
+              <h2>Достижения</h2>
+            </div>
+            <strong class="compact-pill" id="achievementSummary">0/20 открыто</strong>
+          </div>
+          <div id="achievementGrid" class="achievement-grid"></div>
+        </section>
+      </section>
+
+      <section id="challenges" class="tab-panel">
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">🎲 Daily challenge</p>
+              <h2>Челлендж дня</h2>
+            </div>
+          </div>
+          <form id="challengeForm" class="form-stack">
+            <div id="dailyChallengeBox"></div>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">📚 Library</p>
+              <h2>Список челленджей</h2>
+            </div>
+          </div>
+          <div id="challengeLibrary" class="mini-library-grid"></div>
         </section>
       </section>
 
@@ -285,6 +312,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=1.5.0"></script>
+  <script src="app.js?v=1.6.0"></script>
 </body>
 </html>
