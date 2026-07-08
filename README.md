@@ -1,4 +1,4 @@
-# PRIME RPG v0.3
+# PRIME RPG v0.4
 
 Личная RPG-система прокачки реальной жизни.
 
@@ -84,3 +84,22 @@ prime-rpg-app/
     └── workflows/
         └── pages.yml
 ```
+
+
+## v0.4 cache fix
+
+В этой версии исправлен баг GitHub Pages/PWA-кэша:
+
+- CSS и JS подключаются с query-version `?v=0.4.1`;
+- service worker обновлён до `prime-rpg-v4`;
+- fetch теперь network-first, а не cache-first;
+- добавлен boot-error banner, если JS падает при запуске;
+- часы МСК имеют inline fallback и показываются даже до загрузки основного JS.
+
+После деплоя один раз открой сайт так:
+
+```text
+https://coldqh.github.io/LifeRPG/?v=0.4.1
+```
+
+Потом можно открывать обычную ссылку.

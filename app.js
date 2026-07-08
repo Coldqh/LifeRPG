@@ -3,7 +3,7 @@
 const STORAGE_KEY = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.3';
+const APP_VERSION = 'v0.4';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -343,6 +343,22 @@ function showToast(message) {
   showToast.timeout = window.setTimeout(() => toast.classList.remove('show'), 2300);
 }
 
+function showBootError(error) {
+  const message = error?.message || String(error || 'unknown error');
+  const box = document.createElement('div');
+  box.className = 'boot-error';
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>Скорее всего, браузер держит старый кэш. Открой сайт с ?v=0.4.1 или очисти данные сайта.</small>`;
+  document.body.prepend(box);
+}
+
+window.addEventListener('error', (event) => {
+  console.error('PRIME RPG runtime error', event.error || event.message);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('PRIME RPG promise error', event.reason);
+});
+
 function createDayDraft(date, dayNumber) {
   return {
     id: date,
@@ -476,6 +492,7 @@ function formatDate(iso) {
 
 function renderDailyQuests() {
   const grid = $('#dailyQuestGrid');
+  if (!grid) return;
   grid.innerHTML = DAILY_QUESTS.map((quest) => `
     <article class="quest-card">
       <header>
@@ -492,11 +509,12 @@ function renderDailyQuests() {
   `).join('');
 
   const penaltyGrid = $('#penaltyGrid');
-  penaltyGrid.innerHTML = PENALTIES.map((item) => checkRow(`p_${item.id}`, item.text, item.xp)).join('');
+  if (penaltyGrid) penaltyGrid.innerHTML = PENALTIES.map((item) => checkRow(`p_${item.id}`, item.text, item.xp)).join('');
 }
 
 function renderWeeklyBosses() {
   const grid = $('#weeklyBossGrid');
+  if (!grid) return;
   grid.innerHTML = WEEKLY_BOSSES.map((boss) => `
     <article class="quest-card">
       <header>
@@ -1196,7 +1214,7 @@ function renderAll() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch((error) => console.warn('SW registration failed', error));
+    navigator.serviceWorker.register('./sw.js?v=0.4.1').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
   }
 }
 
@@ -1246,16 +1264,21 @@ function bindEvents() {
 }
 
 function init() {
-  renderDailyQuests();
-  renderWeeklyBosses();
-  bindEvents();
-  syncClock(false);
-  fillDailyForm();
-  fillWeeklyForm();
-  renderAll();
-  registerServiceWorker();
-  window.setInterval(() => syncClock(false), ROLLOVER_CHECK_MS);
-  window.setInterval(updateClockUI, 1000);
+  try {
+    renderDailyQuests();
+    renderWeeklyBosses();
+    bindEvents();
+    syncClock(false);
+    fillDailyForm();
+    fillWeeklyForm();
+    renderAll();
+    registerServiceWorker();
+    window.setInterval(() => syncClock(false), ROLLOVER_CHECK_MS);
+    window.setInterval(updateClockUI, 1000);
+  } catch (error) {
+    console.error('PRIME RPG boot failed', error);
+    showBootError(error);
+  }
 }
 
 init();
