@@ -1,12 +1,15 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v8';
+const STORAGE_KEY = 'prime-rpg-state-v10';
+const STORAGE_KEY_BACKUP = 'prime-rpg-state-backup-v10';
+const LEGACY_STORAGE_KEY_V8 = 'prime-rpg-state-v8';
 const LEGACY_STORAGE_KEY_V7 = 'prime-rpg-state-v7';
 const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.9';
+const APP_VERSION = 'v1.0';
+const APP_CACHE_QUERY = '1.0.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -232,7 +235,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 8,
+    version: 10,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -257,7 +260,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_BACKUP) || localStorage.getItem(LEGACY_STORAGE_KEY_V8) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -272,7 +275,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 8,
+    version: 10,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -303,9 +306,30 @@ function migrateState(parsed) {
 }
 
 function saveState() {
-  state.version = 8;
+  if (!state) return;
+  state.version = 10;
   state.system.lastSyncAt = nowMoscowStamp();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const payload = JSON.stringify(state);
+  try {
+    localStorage.setItem(STORAGE_KEY, payload);
+    localStorage.setItem(STORAGE_KEY_BACKUP, payload);
+  } catch (error) {
+    console.error('PRIME RPG save failed', error);
+    showToast('Не удалось сохранить данные');
+  }
+}
+
+function forceSaveNow() {
+  try {
+    if (!state) return;
+    const dailyForm = $('#dailyForm');
+    const weeklyForm = $('#weeklyForm');
+    if (dailyForm) state.currentDay = collectCurrentDayFromForm();
+    if (weeklyForm) state.currentWeek = collectCurrentWeekFromForm();
+    saveState();
+  } catch (error) {
+    console.warn('Force save failed', error);
+  }
 }
 
 function $(selector, root = document) { return root.querySelector(selector); }
@@ -411,6 +435,81 @@ function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
 }
 
+
+function categoryIcon(value) {
+  const key = String(value || '').toUpperCase();
+  const icons = {
+    BODY: '🥊',
+    FIGHTER: '🥊',
+    WORK: '💼',
+    CREATOR: '🛠️',
+    CALM: '🧘',
+    MIND: '📚',
+    DISCIPLINE: '⚡',
+    WEEK: '📅',
+    HISTORY: '📈',
+    SETTINGS: '⚙️'
+  };
+  return icons[key] || '✅';
+}
+
+function questIcon(name, text, xp) {
+  const source = `${name || ''} ${text || ''}`.toLowerCase();
+  if (xp < 0) return '⚠️';
+  if (source.includes('training') || source.includes('трен') || source.includes('бокс')) return '🥊';
+  if (source.includes('steps') || source.includes('шаг')) return '👟';
+  if (source.includes('food') || source.includes('пит') || source.includes('protein') || source.includes('белок')) return '🍗';
+  if (source.includes('work') || source.includes('рабоч') || source.includes('задач')) return '💼';
+  if (source.includes('learn') || source.includes('узнал') || source.includes('чтение') || source.includes('испан')) return '📚';
+  if (source.includes('creator') || source.includes('проект') || source.includes('roadmap') || source.includes('иде')) return '🛠️';
+  if (source.includes('calm') || source.includes('сон') || source.includes('тревог') || source.includes('настро')) return '🧘';
+  if (source.includes('insta') || source.includes('инста')) return '📵';
+  if (source.includes('энергет')) return '🥤';
+  if (source.includes('мусор') || source.includes('фастфуд') || source.includes('слад')) return '🚫';
+  return '✅';
+}
+
+function notifyApp(message, options = {}) {
+  showToast(message);
+  const banner = $('#updateBanner');
+  const bannerText = $('#updateBannerText');
+  if (options.banner && banner && bannerText) {
+    bannerText.textContent = message;
+    banner.hidden = false;
+  }
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('PRIME RPG', { body: message, tag: 'prime-rpg-update' }); } catch (_) {}
+  }
+}
+
+async function requestNotifications() {
+  if (!('Notification' in window)) {
+    showToast('Браузер не поддерживает уведомления');
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  showToast(permission === 'granted' ? 'Уведомления включены' : 'Уведомления не включены');
+}
+
+async function refreshAppVersion() {
+  forceSaveNow();
+  notifyApp('Обновляю версию. Данные сохранены.', { banner: false });
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((reg) => reg.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key.startsWith('prime-rpg')).map((key) => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn('Version refresh cleanup failed', error);
+  }
+  const base = `${window.location.origin}${window.location.pathname}`;
+  window.location.replace(`${base}?v=${APP_CACHE_QUERY}&t=${Date.now()}`);
+}
+
 function showToast(message) {
   const toast = $('#toast');
   if (!toast) return;
@@ -424,7 +523,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.9.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.0.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -572,8 +671,8 @@ function renderDailyQuests() {
     <article class="quest-card">
       <header>
         <div>
-          <p class="eyebrow">${escapeHTML(quest.stat)}</p>
-          <h3>${escapeHTML(quest.title)}</h3>
+          <p class="eyebrow"><span class="emoji">${categoryIcon(quest.stat)}</span> ${escapeHTML(quest.stat)}</p>
+          <h3><span class="card-art">${categoryIcon(quest.title)}</span>${escapeHTML(quest.title)}</h3>
         </div>
         <strong class="quest-xp">+${quest.maxXp}</strong>
       </header>
@@ -584,7 +683,7 @@ function renderDailyQuests() {
   `).join('');
 
   const penaltyGrid = $('#penaltyGrid');
-  if (penaltyGrid) penaltyGrid.innerHTML = PENALTIES.map((item) => checkRow(`p_${item.id}`, item.text, item.xp)).join('');
+  if (penaltyGrid) penaltyGrid.innerHTML = PENALTIES.map((item) => checkRow(`p_${item.id}`, item.text, item.xp, '⚠️')).join('');
 }
 
 function renderWeeklyBosses() {
@@ -594,24 +693,26 @@ function renderWeeklyBosses() {
     <article class="quest-card">
       <header>
         <div>
-          <p class="eyebrow">${escapeHTML(boss.stat)}</p>
-          <h3>${escapeHTML(boss.title)}</h3>
+          <p class="eyebrow"><span class="emoji">${categoryIcon(boss.stat)}</span> ${escapeHTML(boss.stat)}</p>
+          <h3><span class="card-art">${categoryIcon(boss.title)}</span>${escapeHTML(boss.title)}</h3>
         </div>
         <strong class="quest-xp">+${boss.maxXp}</strong>
       </header>
       <div class="checkbox-grid">
-        ${boss.items.map((item) => checkRow(`b_${item.id}`, item.text, item.xp)).join('')}
+        ${boss.items.map((item) => checkRow(`b_${item.id}`, item.text, item.xp, categoryIcon(boss.title))).join('')}
       </div>
     </article>
   `).join('');
 }
 
-function checkRow(name, text, xp) {
+function checkRow(name, text, xp, icon = null) {
   const sign = xp > 0 ? `+${xp}` : `${xp}`;
+  const rowIcon = icon || questIcon(name, text, xp);
   return `
     <div class="check-row">
       <label>
         <input name="${escapeHTML(name)}" type="checkbox" />
+        <span class="row-icon" aria-hidden="true">${escapeHTML(rowIcon)}</span>
         <span>${escapeHTML(text)}</span>
       </label>
       <span class="xp">${escapeHTML(sign)}</span>
@@ -1003,7 +1104,7 @@ function renderDashboard() {
     const text = pending ? `${value}+${pending} XP` : `${value} XP`;
     return `
       <div>
-        <div class="bar-top"><span>${escapeHTML(key)}</span><strong>${escapeHTML(text)}</strong></div>
+        <div class="bar-top"><span><span class="emoji">${categoryIcon(key)}</span> ${escapeHTML(key)}</span><strong>${escapeHTML(text)}</strong></div>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
       </div>
     `;
@@ -1043,7 +1144,7 @@ function renderWeeklyMinimum() {
   ];
 
   $('#weeklyMinimumList').innerHTML = items.map((item) => `
-    <li><span>${escapeHTML(item.text)}</span><strong class="${item.ok ? 'ok' : 'bad'}">${escapeHTML(item.value)}</strong></li>
+    <li><span><span class="row-icon" aria-hidden="true">${item.ok ? '✅' : '▫️'}</span>${escapeHTML(item.text)}</span><strong class="${item.ok ? 'ok' : 'bad'}">${escapeHTML(item.value)}</strong></li>
   `).join('');
 }
 
@@ -1384,9 +1485,27 @@ function renderAll() {
 }
 
 function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=0.9.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
-  }
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register(`./sw.js?v=${APP_CACHE_QUERY}`)
+    .then((reg) => {
+      reg.update();
+      if (reg.waiting && navigator.serviceWorker.controller) notifyApp('Доступна новая версия PRIME RPG', { banner: true });
+      reg.addEventListener('updatefound', () => {
+        const worker = reg.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            notifyApp('Доступна новая версия PRIME RPG', { banner: true });
+          }
+        });
+      });
+    })
+    .catch((error) => console.warn('SW registration failed', error));
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    notifyApp('Версия обновлена');
+  });
 }
 
 function bindEvents() {
@@ -1413,6 +1532,10 @@ function bindEvents() {
   }
   if ($('#settingsForm')) $('#settingsForm').addEventListener('submit', saveSettings);
   if ($('#syncClockBtn')) $('#syncClockBtn').addEventListener('click', () => syncClock(true));
+  if ($('#forceUpdateBtn')) $('#forceUpdateBtn').addEventListener('click', refreshAppVersion);
+  if ($('#updateNowBtn')) $('#updateNowBtn').addEventListener('click', refreshAppVersion);
+  if ($('#dismissUpdateBtn')) $('#dismissUpdateBtn').addEventListener('click', () => { const banner = $('#updateBanner'); if (banner) banner.hidden = true; });
+  if ($('#enableNotificationsBtn')) $('#enableNotificationsBtn').addEventListener('click', requestNotifications);
   if ($('#clearDailyBtn')) $('#clearDailyBtn').addEventListener('click', resetCurrentDay);
   if ($('#clearWeeklyBtn')) $('#clearWeeklyBtn').addEventListener('click', resetCurrentWeek);
   if ($('#exportBtn')) $('#exportBtn').addEventListener('click', exportData);
@@ -1442,8 +1565,11 @@ function bindEvents() {
     showToast('Всё сброшено: история очищена');
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) syncClock(false);
+    if (document.hidden) forceSaveNow();
+    else syncClock(false);
   });
+  window.addEventListener('pagehide', forceSaveNow);
+  window.addEventListener('beforeunload', forceSaveNow);
   window.addEventListener('focus', () => syncClock(false));
 }
 
