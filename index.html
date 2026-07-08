@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f14" />
-  <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: live-квесты, XP, ранги, боссы недели." />
+  <meta name="description" content="PRIME RPG — личная RPG-система прокачки реальной жизни: live-квесты, XP, ранги, недельные задачи." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=0.7.0" />
+  <link rel="manifest" href="manifest.json?v=0.8.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=0.7.0" />
+  <link rel="stylesheet" href="styles.css?v=0.8.0" />
 </head>
 <body>
   <div class="app-shell">
@@ -17,7 +17,7 @@
         <p class="eyebrow">личная система прокачки</p>
         <h1>PRIME RPG</h1>
         <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v0.7</span>
+          <span id="appVersionValue">v0.8</span>
           <span id="moscowDateValue">—</span>
           <span id="moscowWeekdayValue">—</span>
           <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -32,24 +32,15 @@
     </header>
 
     <nav class="tabbar" aria-label="Главная навигация">
-      <button class="tab-btn active" data-tab="dashboard" type="button">Пульт</button>
+      <button class="tab-btn active" data-tab="dashboard" type="button">Профиль</button>
       <button class="tab-btn" data-tab="daily" type="button">Квесты</button>
-      <button class="tab-btn" data-tab="weekly" type="button">Боссы</button>
+      <button class="tab-btn" data-tab="weekly" type="button">Неделя</button>
       <button class="tab-btn" data-tab="history" type="button">История</button>
       <button class="tab-btn" data-tab="settings" type="button">Настройки</button>
     </nav>
 
     <main>
       <section id="dashboard" class="tab-panel active">
-        <div class="hero-card">
-          <div>
-            <p class="eyebrow">Season 1</p>
-            <h2 id="seasonTitle">Москва / Сушка / Работа</h2>
-            <p class="muted">Минимум: BODY, WORK, CREATOR, CALM. День и неделя меняются автоматически по Москве.</p>
-          </div>
-          <div class="rank-badge" id="statusRank">Ordinary</div>
-        </div>
-
         <section class="panel clock-panel">
           <div class="section-head">
             <div>
@@ -74,17 +65,17 @@
           <article class="stat-card">
             <span>Всего XP</span>
             <strong id="totalXpValue">0</strong>
-            <small>live-прогресс</small>
+            <small>подтверждено + pending</small>
           </article>
           <article class="stat-card">
             <span>Текущий день</span>
             <strong id="lastDayRank">—</strong>
-            <small id="lastDayXp">0 XP</small>
+            <small id="lastDayXp">итог дня: +0 XP</small>
           </article>
           <article class="stat-card">
             <span>Текущая неделя</span>
             <strong id="weekXpValue">0 XP</strong>
-            <small id="weekReportsValue">0 дней</small>
+            <small id="weekReportsValue">0/7 дней</small>
           </article>
         </section>
 
@@ -102,7 +93,7 @@
           <article class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Week boss</p>
+                <p class="eyebrow">Week</p>
                 <h3>Минимум недели</h3>
               </div>
             </div>
@@ -151,9 +142,8 @@
           <section class="panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Live bosses</p>
-                <h2 id="weeklyLiveTitle">Боссы текущей недели</h2>
-                <p class="muted">Отмечаешь условия боссов. В ночь с воскресенья на понедельник неделя закрывается и уходит в историю.</p>
+                <p class="eyebrow">Week</p>
+                <h2 id="weeklyLiveTitle">Неделя</h2>
               </div>
             </div>
           </section>
@@ -251,6 +241,6 @@
       window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=0.7.0"></script>
+  <script src="app.js?v=0.8.0"></script>
 </body>
 </html>

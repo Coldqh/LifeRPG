@@ -1,15 +1,16 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v7';
+const STORAGE_KEY = 'prime-rpg-state-v8';
+const LEGACY_STORAGE_KEY_V7 = 'prime-rpg-state-v7';
 const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.7';
+const APP_VERSION = 'v0.8';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
-const STAT_KEYS = ['BODY', 'FIGHTER', 'MIND', 'WORK', 'CREATOR', 'CALM', 'DISCIPLINE', 'CHARISMA', 'MONEY'];
+const STAT_KEYS = ['BODY', 'FIGHTER', 'MIND', 'WORK', 'CREATOR', 'CALM', 'DISCIPLINE'];
 const LEVELS = [0, 1000, 2200, 3600, 5200, 7000, 9000, 11500, 14500, 18000, 22000, 27000, 33000, 40000];
 
 const DEFAULT_DAILY_QUESTS = [
@@ -60,28 +61,14 @@ const DEFAULT_DAILY_QUESTS = [
     ]
   },
   {
-    key: 'charisma', title: 'CHARISMA', stat: 'CHARISMA', maxXp: 20,
-    items: [
-      { id: 'charisma_contact', text: 'нормальный контакт с человеком', xp: 10, stat: 'CHARISMA' },
-      { id: 'charisma_message', text: 'написал знакомому / поговорил на работе / дейтинг без залипа', xp: 10, stat: 'CHARISMA' }
-    ]
-  },
-  {
     key: 'discipline', title: 'DISCIPLINE', stat: 'DISCIPLINE', maxXp: 30,
     items: [
       { id: 'discipline_insta0', text: 'инста 0 минут', xp: 10, stat: 'DISCIPLINE' },
       { id: 'discipline_energy1', text: 'энергетик максимум 1', xp: 10, stat: 'DISCIPLINE' },
       { id: 'discipline_no_junk', text: 'без сладкого мусора / фастфуда / импульсивной херни', xp: 10, stat: 'DISCIPLINE' }
     ]
-  },
-  {
-    key: 'money', title: 'MONEY', stat: 'MONEY', maxXp: 30,
-    items: [
-      { id: 'money_expenses', text: 'записал траты за день', xp: 10, stat: 'MONEY' },
-      { id: 'money_no_trash', text: 'не купил ненужную херню', xp: 10, stat: 'MONEY' },
-      { id: 'money_career', text: 'сделал шаг к деньгам/карьере', xp: 10, stat: 'MONEY' }
-    ]
   }
+
 ];
 
 const PENALTIES = [
@@ -96,7 +83,7 @@ const PENALTIES = [
 
 const WEEKLY_BOSSES = [
   {
-    key: 'bodyBoss', title: 'BODY BOSS', stat: 'BODY', maxXp: 130,
+    key: 'bodyBoss', title: 'BODY', stat: 'BODY', maxXp: 130,
     items: [
       { id: 'body_3_trainings', text: '3 тренировки за неделю', xp: 50 },
       { id: 'body_avg_steps', text: 'средние шаги 12к+', xp: 30 },
@@ -105,7 +92,7 @@ const WEEKLY_BOSSES = [
     ]
   },
   {
-    key: 'workBoss', title: 'WORK BOSS', stat: 'WORK', maxXp: 150,
+    key: 'workBoss', title: 'WORK', stat: 'WORK', maxXp: 150,
     items: [
       { id: 'work_5_days', text: '5 рабочих дней закрыты', xp: 50 },
       { id: 'work_5_logs', text: '5 рабочих журналов', xp: 30 },
@@ -115,7 +102,7 @@ const WEEKLY_BOSSES = [
     ]
   },
   {
-    key: 'creatorBoss', title: 'CREATOR BOSS', stat: 'CREATOR', maxXp: 150,
+    key: 'creatorBoss', title: 'CREATOR', stat: 'CREATOR', maxXp: 150,
     items: [
       { id: 'creator_3_sessions', text: '3 сессии проекта по 30+ минут', xp: 40 },
       { id: 'creator_visible_result', text: '1 видимый результат', xp: 50 },
@@ -125,7 +112,7 @@ const WEEKLY_BOSSES = [
     ]
   },
   {
-    key: 'calmBoss', title: 'CALM BOSS', stat: 'CALM', maxXp: 150,
+    key: 'calmBoss', title: 'CALM', stat: 'CALM', maxXp: 150,
     items: [
       { id: 'calm_sleep_7', text: 'сон записан 7/7 дней', xp: 30 },
       { id: 'calm_anxiety_7', text: 'тревога записана 7/7 дней', xp: 30 },
@@ -133,26 +120,8 @@ const WEEKLY_BOSSES = [
       { id: 'calm_insta_control', text: 'инста под контролем всю неделю', xp: 30 },
       { id: 'calm_head_conclusion', text: 'сделал недельный вывод по голове', xp: 30 }
     ]
-  },
-  {
-    key: 'socialBoss', title: 'SOCIAL BOSS', stat: 'CHARISMA', maxXp: 100,
-    items: [
-      { id: 'social_live_contact', text: '1 встреча / прогулка / живой контакт', xp: 30 },
-      { id: 'social_2_chats', text: '2 нормальных переписки без залипа', xp: 20 },
-      { id: 'social_new_contact', text: '1 новый контакт / разговор на работе', xp: 20 },
-      { id: 'social_dating_limit', text: 'дейтинг максимум 20 минут за раз', xp: 10 },
-      { id: 'social_no_likes_value', text: 'не оценивал себя по лайкам', xp: 20 }
-    ]
-  },
-  {
-    key: 'moneyBoss', title: 'MONEY BOSS', stat: 'MONEY', maxXp: 100,
-    items: [
-      { id: 'money_expenses_5', text: 'записал траты 5/7 дней', xp: 30 },
-      { id: 'money_no_trash_week', text: 'не слил деньги на мусор', xp: 30 },
-      { id: 'money_career_step', text: 'сделал карьерный шаг', xp: 20 },
-      { id: 'money_week_situation', text: 'понял финансовую ситуацию недели', xp: 20 }
-    ]
   }
+
 ];
 
 const DAILY_METRIC_FIELDS = [];
@@ -166,9 +135,21 @@ function cloneQuestConfig(quests) {
   return JSON.parse(JSON.stringify(Array.isArray(quests) ? quests : []));
 }
 
+
+function isDisabledCategory(quest) {
+  const key = String(quest?.key || '').toLowerCase();
+  const title = String(quest?.title || quest?.category || '').toUpperCase();
+  return ['charisma', 'social', 'money'].includes(key) || ['CHARISMA', 'SOCIAL', 'MONEY'].includes(title);
+}
+
+function filterActiveDailyQuests(quests) {
+  return cloneQuestConfig(quests).filter((quest) => !isDisabledCategory(quest));
+}
+
 function getDailyQuests() {
   const quests = state?.config?.dailyQuests;
-  return Array.isArray(quests) && quests.length ? quests : DEFAULT_DAILY_QUESTS;
+  const active = filterActiveDailyQuests(Array.isArray(quests) && quests.length ? quests : DEFAULT_DAILY_QUESTS);
+  return active.length ? active : filterActiveDailyQuests(DEFAULT_DAILY_QUESTS);
 }
 
 function safeId(value) {
@@ -190,7 +171,7 @@ function normalizeCategoryKey(value) {
   const raw = String(value || '').trim();
   const known = {
     BODY: 'body', FIGHTER: 'fighter', WORK: 'work', CREATOR: 'creator', CALM: 'calm', MIND: 'mind',
-    CHARISMA: 'charisma', SOCIAL: 'charisma', DISCIPLINE: 'discipline', MONEY: 'money'
+    DISCIPLINE: 'discipline'
   };
   return known[raw.toUpperCase()] || safeId(raw);
 }
@@ -251,7 +232,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 6,
+    version: 8,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -259,7 +240,7 @@ function defaultState() {
       startDate: today
     },
     config: {
-      dailyQuests: cloneQuestConfig(DEFAULT_DAILY_QUESTS)
+      dailyQuests: filterActiveDailyQuests(DEFAULT_DAILY_QUESTS)
     },
     system: {
       currentDate: today,
@@ -276,7 +257,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V7) || localStorage.getItem(LEGACY_STORAGE_KEY_V5) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -291,7 +272,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 6,
+    version: 8,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -299,6 +280,7 @@ function migrateState(parsed) {
     weeks: Array.isArray(parsed.weeks) ? parsed.weeks : []
   };
 
+  stateLike.config.dailyQuests = filterActiveDailyQuests(stateLike.config.dailyQuests || DEFAULT_DAILY_QUESTS);
   if (!stateLike.currentDay) {
     const today = todayMoscowISO();
     const oldToday = stateLike.days.find((day) => day.id === today || day.metrics?.date === today);
@@ -306,6 +288,10 @@ function migrateState(parsed) {
     stateLike.days = stateLike.days.filter((day) => (day.id !== today && day.metrics?.date !== today));
   }
   if (!stateLike.currentWeek) stateLike.currentWeek = createWeekDraft(getWeekStart(todayMoscowISO()));
+  const activeDailyIds = new Set((stateLike.config.dailyQuests || []).flatMap((quest) => (quest.items || []).map((item) => item.id)));
+  const activeWeeklyIds = new Set(WEEKLY_BOSSES.flatMap((week) => week.items.map((item) => item.id)));
+  stateLike.currentDay.completed = (stateLike.currentDay.completed || []).filter((id) => activeDailyIds.has(id));
+  stateLike.currentWeek.completed = (stateLike.currentWeek.completed || []).filter((id) => activeWeeklyIds.has(id));
   stateLike.system.currentDate = stateLike.currentDay.date || todayMoscowISO();
   stateLike.system.currentWeekId = stateLike.currentWeek.weekId || getWeekStart(todayMoscowISO());
   stateLike.system.dayCounter = Math.max(
@@ -317,7 +303,7 @@ function migrateState(parsed) {
 }
 
 function saveState() {
-  state.version = 6;
+  state.version = 8;
   state.system.lastSyncAt = nowMoscowStamp();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -438,7 +424,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.7.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.8.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -744,13 +730,7 @@ function updateDailyPreview() {
 }
 
 function updateWeeklyPreview() {
-  const title = $('#weeklyResultTitle');
-  const details = $('#weeklyResultDetails');
-  if (!title || !details) return;
-  const result = calculateWeeklyFromDraft(state.currentWeek);
-  const passed = result.totalXp >= 500;
-  title.textContent = `${result.totalXp} XP — ${passed ? 'неделя закрывается' : 'неделя не закрыта'}`;
-  details.textContent = `Live-неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}. Боссы: BODY ${result.bossXp.bodyBoss || 0}, WORK ${result.bossXp.workBoss || 0}, CREATOR ${result.bossXp.creatorBoss || 0}, CALM ${result.bossXp.calmBoss || 0}, SOCIAL ${result.bossXp.socialBoss || 0}, MONEY ${result.bossXp.moneyBoss || 0}.`;
+  // В недельной вкладке нет отдельного live-блока. Галочки сохраняются как pending XP до автозакрытия недели.
 }
 
 function finalizeDay(draft, reason = 'midnight') {
@@ -837,7 +817,6 @@ function buildWeekMetrics(draft, days) {
     foodPlanDays: days.filter((day) => day.completed?.includes('body_food')).length,
     workJournals: days.filter((day) => day.completed?.includes('work_log')).length,
     projectSessions: days.filter((day) => day.completed?.includes('creator_project30')).length,
-    socialActions: days.filter((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message')).length,
     instagramControlDays: days.filter((day) => !day.penalties?.includes('insta_slip')).length
   };
 }
@@ -857,20 +836,19 @@ function getClosedDaysInWeek(weekId) {
     .sort((a, b) => (a.metrics?.date || a.id || '').localeCompare(b.metrics?.date || b.id || ''));
 }
 
-function isWeeklyMinimumPassed(days, weekDraft = state.currentWeek) {
+function isWeeklyMinimumPassed(days) {
   const reports = days.length;
   const trainings = days.filter((day) => day.completed?.includes('body_training')).length;
   const workLogs = days.filter((day) => day.completed?.includes('work_log')).length;
   const projectSessions = days.filter((day) => day.completed?.includes('creator_project30')).length;
   const instaControl = days.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  const social = days.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
-  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports && social;
+  return trainings >= 3 && workLogs >= 5 && projectSessions >= 3 && reports >= 7 && instaControl === reports;
 }
 
 function buildAutoWeekSummary(days, calc) {
   const totalDaily = days.reduce((sum, day) => sum + Number(day.netXp || 0), 0);
   const best = [...days].sort((a, b) => Number(b.netXp || 0) - Number(a.netXp || 0))[0];
-  return `Автосводка: ${days.length}/7 дней, ${totalDaily} XP за дни, ${calc.totalXp} XP за боссов.${best ? ` Лучший день: ${formatDate(best.metrics?.date)} — ${best.netXp} XP.` : ''}`;
+  return `Автосводка: ${days.length}/7 дней, ${totalDaily} XP за дни, ${calc.totalXp} XP за неделю.${best ? ` Лучший день: ${formatDate(best.metrics?.date)} — ${best.netXp} XP.` : ''}`;
 }
 
 function buildAutoWeekImprove(days) {
@@ -953,16 +931,17 @@ function updateClockUI() {
   if ($('#currentWeekMeta')) $('#currentWeekMeta').textContent = weekText;
   if ($('#rolloverMeta')) $('#rolloverMeta').textContent = nextText;
   if ($('#dailyLiveTitle')) $('#dailyLiveTitle').textContent = `Квесты текущего дня — ${formatDate(today)}`;
-  if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Боссы текущей недели — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
+  if ($('#weeklyLiveTitle')) $('#weeklyLiveTitle').textContent = `Неделя — ${formatDate(week.startDate)}–${formatDate(week.endDate)}`;
 }
 
 function getTotals() {
   const statXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
+  const pendingStatXp = Object.fromEntries(STAT_KEYS.map((key) => [key, 0]));
   let closedDailyXp = 0;
   state.days.forEach((day) => {
     closedDailyXp += Number(day.netXp || 0);
     Object.entries(day.categoryXp || {}).forEach(([key, value]) => {
-      statXp[key] = (statXp[key] || 0) + Number(value || 0);
+      if (key in statXp) statXp[key] = (statXp[key] || 0) + Number(value || 0);
     });
   });
 
@@ -970,52 +949,61 @@ function getTotals() {
   state.weeks.forEach((week) => {
     closedWeeklyXp += Number(week.totalXp || 0);
     Object.entries(week.categoryXp || {}).forEach(([key, value]) => {
-      statXp[key] = (statXp[key] || 0) + Number(value || 0);
+      if (key in statXp) statXp[key] = (statXp[key] || 0) + Number(value || 0);
     });
   });
 
   const liveDaily = calculateDailyFromDraft(state.currentDay);
   Object.entries(liveDaily.categoryXp || {}).forEach(([key, value]) => {
-    statXp[key] = (statXp[key] || 0) + Number(value || 0);
+    if (key in pendingStatXp) pendingStatXp[key] = (pendingStatXp[key] || 0) + Number(value || 0);
   });
 
   const liveWeek = calculateWeeklyFromDraft(state.currentWeek);
   Object.entries(liveWeek.categoryXp || {}).forEach(([key, value]) => {
-    statXp[key] = (statXp[key] || 0) + Number(value || 0);
+    if (key in pendingStatXp) pendingStatXp[key] = (pendingStatXp[key] || 0) + Number(value || 0);
   });
+
+  const confirmedTotalXp = closedDailyXp + closedWeeklyXp;
+  const pendingXp = liveDaily.netXp + liveWeek.totalXp;
 
   return {
     statXp,
+    pendingStatXp,
     closedDailyXp,
     closedWeeklyXp,
-    liveDailyXp: liveDaily.netXp,
-    liveWeekXp: liveWeek.totalXp,
-    totalXp: closedDailyXp + closedWeeklyXp + liveDaily.netXp + liveWeek.totalXp
+    confirmedTotalXp,
+    pendingDailyXp: liveDaily.netXp,
+    pendingWeeklyXp: liveWeek.totalXp,
+    pendingXp,
+    totalXp: confirmedTotalXp
   };
 }
 
 function renderDashboard() {
   const totals = getTotals();
-  const level = getLevel(totals.totalXp);
+  const level = getLevel(totals.confirmedTotalXp);
   const liveDaily = calculateDailyFromDraft(state.currentDay);
   const liveWeek = calculateWeeklyFromDraft(state.currentWeek);
-  $('#seasonTitle').textContent = state.profile.seasonName || 'Москва / Сушка / Работа';
-  $('#statusRank').textContent = getStatusRank(totals.totalXp);
+  if ($('#seasonTitle')) $('#seasonTitle').textContent = state.profile.seasonName || 'Москва / Сушка / Работа';
+  if ($('#statusRank')) $('#statusRank').textContent = getStatusRank(totals.confirmedTotalXp);
   $('#levelValue').textContent = level.level;
-  $('#levelProgressText').textContent = `${totals.totalXp} / ${level.next} XP`;
+  $('#levelProgressText').textContent = `${totals.confirmedTotalXp}+${totals.pendingXp} / ${level.next} XP`;
   $('#levelProgressBar').style.width = `${level.progress}%`;
-  $('#totalXpValue').textContent = totals.totalXp;
+  $('#totalXpValue').textContent = `${totals.confirmedTotalXp}+${totals.pendingXp}`;
   $('#lastDayRank').textContent = liveDaily.rank;
-  $('#lastDayXp').textContent = `сегодня live: ${liveDaily.netXp} XP`;
-  $('#weekXpValue').textContent = `${getWeekCurrentXp()} XP`;
-  $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 дней • boss ${liveWeek.totalXp} XP`;
+  $('#lastDayXp').textContent = `итог дня: +${liveDaily.netXp} XP`;
+  const weekXp = getWeekCurrentXpParts();
+  $('#weekXpValue').textContent = `${weekXp.confirmed}+${weekXp.pending} XP`;
+  $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 дней • неделя +${liveWeek.totalXp} XP`;
 
   $('#statBars').innerHTML = STAT_KEYS.map((key) => {
     const value = totals.statXp[key] || 0;
+    const pending = totals.pendingStatXp[key] || 0;
     const width = Math.min(100, (value / 2500) * 100);
+    const text = pending ? `${value}+${pending} XP` : `${value} XP`;
     return `
       <div>
-        <div class="bar-top"><span>${escapeHTML(key)}</span><strong>${value} XP</strong></div>
+        <div class="bar-top"><span>${escapeHTML(key)}</span><strong>${escapeHTML(text)}</strong></div>
         <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
       </div>
     `;
@@ -1026,12 +1014,12 @@ function renderDashboard() {
   updateClockUI();
 }
 
-function getWeekCurrentXp() {
+function getWeekCurrentXpParts() {
   const weekId = state.currentWeek?.weekId || getWeekStart(todayMoscowISO());
-  const daily = getClosedDaysInWeek(weekId).reduce((sum, day) => sum + Number(day.netXp || 0), 0);
-  const liveDaily = state.currentDay?.date >= weekId && state.currentDay?.date <= getWeekEnd(weekId) ? calculateDailyFromDraft(state.currentDay).netXp : 0;
-  const liveWeek = calculateWeeklyFromDraft(state.currentWeek).totalXp;
-  return daily + liveDaily + liveWeek;
+  const confirmed = getClosedDaysInWeek(weekId).reduce((sum, day) => sum + Number(day.netXp || 0), 0);
+  const pendingDaily = state.currentDay?.date >= weekId && state.currentDay?.date <= getWeekEnd(weekId) ? calculateDailyFromDraft(state.currentDay).netXp : 0;
+  const pendingWeekly = calculateWeeklyFromDraft(state.currentWeek).totalXp;
+  return { confirmed, pending: pendingDaily + pendingWeekly };
 }
 
 function renderWeeklyMinimum() {
@@ -1045,15 +1033,13 @@ function renderWeeklyMinimum() {
   const workLogs = includeCurrent.filter((day) => day.completed?.includes('work_log')).length;
   const projectSessions = includeCurrent.filter((day) => day.completed?.includes('creator_project30')).length;
   const instaControl = includeCurrent.filter((day) => !day.penalties?.includes('insta_slip')).length;
-  const social = includeCurrent.some((day) => day.completed?.includes('charisma_contact') || day.completed?.includes('charisma_message'));
 
   const items = [
     { text: '3 тренировки', value: `${trainings}/3`, ok: trainings >= 3 },
     { text: '5 рабочих журналов', value: `${workLogs}/5`, ok: workLogs >= 5 },
     { text: '3 проектные сессии', value: `${projectSessions}/3`, ok: projectSessions >= 3 },
     { text: '7 активных дней', value: `${reports}/7`, ok: reports >= 7 },
-    { text: 'инста под контролем', value: `${instaControl}/${reports || 7}`, ok: reports >= 1 && instaControl === reports },
-    { text: '1 социальное действие', value: social ? 'есть' : 'нет', ok: social }
+    { text: 'инста под контролем', value: `${instaControl}/${reports || 7}`, ok: reports >= 1 && instaControl === reports }
   ];
 
   $('#weeklyMinimumList').innerHTML = items.map((item) => `
@@ -1120,7 +1106,7 @@ function weekHistoryItem(week) {
       <div class="history-item-top">
         <div>
           <div class="history-title">Неделя ${escapeHTML(week.metrics?.weekNumber || week.weekNumber || week.id)} — ${week.result === 'passed' ? 'закрыта' : 'не закрыта'}</div>
-          <div class="history-meta">${week.totalXp} boss XP • ${week.dailyXp || 0} day XP • ${formatDate(week.metrics?.startDate || week.startDate)} — ${formatDate(week.metrics?.endDate || week.endDate)}</div>
+          <div class="history-meta">${week.totalXp} week XP • ${week.dailyXp || 0} day XP • ${formatDate(week.metrics?.startDate || week.startDate)} — ${formatDate(week.metrics?.endDate || week.endDate)}</div>
         </div>
         <div class="history-actions">
           <button class="mini-btn" type="button" data-delete-week="${escapeHTML(week.id)}">Удалить</button>
@@ -1151,8 +1137,8 @@ function buildChatPrompt() {
 Дата МСК: ${formatDate(state.currentDay.date)}
 День №${state.currentDay.dayNumber}
 Неделя №${getSeasonWeekNumber(state.currentWeek.weekId)}
-Total XP live: ${totals.totalXp}
-Status: ${getStatusRank(totals.totalXp)}
+Total XP: ${totals.confirmedTotalXp}+${totals.pendingXp}
+Status: ${getStatusRank(totals.confirmedTotalXp)}
 
 Разбери мой PRIME RPG прогресс:
 1. Коротко оцени текущий день.
@@ -1193,7 +1179,7 @@ function applyQuestPack(payload) {
   const pack = normalizeQuestPack(payload);
   const current = cloneQuestConfig(getDailyQuests());
 
-  pack.categories.forEach((incoming) => {
+  pack.categories.filter((incoming) => !isDisabledCategory(incoming)).forEach((incoming) => {
     let category = current.find((item) => item.key === incoming.key || item.title?.toUpperCase() === incoming.title.toUpperCase());
     if (!category) {
       category = { key: incoming.key, title: incoming.title, stat: incoming.stat, maxXp: 0, items: [] };
@@ -1275,7 +1261,7 @@ function downloadQuestTemplate() {
 function resetQuestConfig() {
   const ok = window.confirm('Сбросить квесты к базовым? История останется.');
   if (!ok) return;
-  state.config = { ...(state.config || {}), dailyQuests: cloneQuestConfig(DEFAULT_DAILY_QUESTS) };
+  state.config = { ...(state.config || {}), dailyQuests: filterActiveDailyQuests(DEFAULT_DAILY_QUESTS) };
   state.currentDay.completed = [];
   saveState();
   renderDailyQuests();
@@ -1322,8 +1308,8 @@ function buildHistorySummary() {
   const lines = [
     'PRIME RPG — сводка',
     `Дата МСК: ${formatDate(state.currentDay.date)}`,
-    `Total XP live: ${totals.totalXp}`,
-    `Status: ${getStatusRank(totals.totalXp)}`,
+    `Total XP: ${totals.confirmedTotalXp}+${totals.pendingXp}`,
+    `Status: ${getStatusRank(totals.confirmedTotalXp)}`, 
     `Current week: ${formatDate(state.currentWeek.startDate)} — ${formatDate(state.currentWeek.endDate)}`,
     '',
     'Последние дни:'
@@ -1331,7 +1317,7 @@ function buildHistorySummary() {
   days.forEach((day) => lines.push(`${formatDate(day.metrics?.date)} — ${day.netXp} XP — ${day.rank}`));
   if (state.weeks.length) {
     lines.push('', 'Закрытые недели:');
-    state.weeks.slice(-3).forEach((week) => lines.push(`Неделя ${week.metrics?.weekNumber || week.weekNumber}: ${week.dailyXp || 0} daily XP + ${week.totalXp} boss XP — ${week.result}`));
+    state.weeks.slice(-3).forEach((week) => lines.push(`Неделя ${week.metrics?.weekNumber || week.weekNumber}: ${week.dailyXp || 0} daily XP + ${week.totalXp} week XP — ${week.result}`));
   }
   return lines.join('\n');
 }
@@ -1399,7 +1385,7 @@ function renderAll() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=0.7.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
+    navigator.serviceWorker.register('./sw.js?v=0.8.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
   }
 }
 
