@@ -1,5 +1,5 @@
-const CACHE_NAME = 'prime-rpg-v4';
-const APP_SHELL = ['./', './index.html', './styles.css?v=0.4.1', './app.js?v=0.4.1', './manifest.json?v=0.4.1', './assets/icon.svg'];
+const CACHE_NAME = 'prime-rpg-v5';
+const APP_SHELL = ['./', './index.html', './styles.css?v=0.5.0', './app.js?v=0.5.0', './manifest.json?v=0.5.0', './assets/icon.svg'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

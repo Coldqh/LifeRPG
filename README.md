@@ -1,4 +1,4 @@
-# PRIME RPG v0.4
+# PRIME RPG v0.5
 
 Личная RPG-система прокачки реальной жизни.
 
@@ -86,11 +86,11 @@ prime-rpg-app/
 ```
 
 
-## v0.4 cache fix
+## v0.5 cache fix
 
 В этой версии исправлен баг GitHub Pages/PWA-кэша:
 
-- CSS и JS подключаются с query-version `?v=0.4.1`;
+- CSS и JS подключаются с query-version `?v=0.5.0`;
 - service worker обновлён до `prime-rpg-v4`;
 - fetch теперь network-first, а не cache-first;
 - добавлен boot-error banner, если JS падает при запуске;
@@ -99,7 +99,7 @@ prime-rpg-app/
 После деплоя один раз открой сайт так:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=0.4.1
+https://coldqh.github.io/LifeRPG/?v=0.5.0
 ```
 
 Потом можно открывать обычную ссылку.

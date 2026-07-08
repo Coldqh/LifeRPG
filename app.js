@@ -1,9 +1,10 @@
 'use strict';
 
-const STORAGE_KEY = 'prime-rpg-state-v3';
+const STORAGE_KEY = 'prime-rpg-state-v5';
+const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v0.4';
+const APP_VERSION = 'v0.5';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -158,14 +159,14 @@ const DAILY_METRIC_FIELDS = ['weight', 'waist', 'sleep', 'steps', 'energyDrink',
 const NOTE_FIELDS = ['workDone', 'workLearned', 'workStuck', 'creatorProject', 'creatorDone', 'calmAnnoyed', 'calmGood', 'mindNote', 'charismaNote', 'moneyNote'];
 const WEEKLY_NOTE_FIELDS = ['workTasks', 'workInsight', 'creatorProject', 'creatorResult', 'calmTriggers', 'calmHelped', 'socialContacts', 'moneyInsight', 'weekSummary', 'improve'];
 
-let state = loadState();
+let state;
 let suppressAutosave = false;
 
 function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 3,
+    version: 5,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -179,7 +180,7 @@ function defaultState() {
       lastSyncAt: nowMoscowStamp()
     },
     currentDay: createDayDraft(today, 1),
-    currentWeek: createWeekDraft(weekId),
+    currentWeek: createWeekDraft(weekId, today),
     days: [],
     weeks: []
   };
@@ -187,7 +188,7 @@ function defaultState() {
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V3) || localStorage.getItem(LEGACY_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY_V1);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     return migrateState(parsed);
@@ -202,7 +203,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 3,
+    version: 5,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
     days: Array.isArray(parsed.days) ? parsed.days : [],
@@ -227,7 +228,7 @@ function migrateState(parsed) {
 }
 
 function saveState() {
-  state.version = 3;
+  state.version = 5;
   state.system.lastSyncAt = nowMoscowStamp();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -304,8 +305,9 @@ function getWeekEnd(weekStart) {
   return addDays(weekStart, 6);
 }
 
-function getSeasonWeekNumber(weekStart = getWeekStart(todayMoscowISO())) {
-  const seasonStartWeek = getWeekStart(state.profile?.startDate || todayMoscowISO());
+function getSeasonWeekNumber(weekStart = getWeekStart(todayMoscowISO()), startDateOverride = null) {
+  const startDate = startDateOverride || state?.profile?.startDate || todayMoscowISO();
+  const seasonStartWeek = getWeekStart(startDate);
   return Math.max(1, Math.floor(diffDays(seasonStartWeek, weekStart) / 7) + 1);
 }
 
@@ -347,7 +349,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>Скорее всего, браузер держит старый кэш. Открой сайт с ?v=0.4.1 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=0.5.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -375,11 +377,11 @@ function createDayDraft(date, dayNumber) {
   };
 }
 
-function createWeekDraft(weekId) {
+function createWeekDraft(weekId, startDateOverride = null) {
   return {
     id: weekId,
     weekId,
-    weekNumber: getSeasonWeekNumber(weekId),
+    weekNumber: getSeasonWeekNumber(weekId, startDateOverride),
     startDate: weekId,
     endDate: getWeekEnd(weekId),
     createdAt: nowMoscowStamp(),
@@ -1214,7 +1216,7 @@ function renderAll() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js?v=0.4.1').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
+    navigator.serviceWorker.register('./sw.js?v=0.5.0').then((reg) => reg.update()).catch((error) => console.warn('SW registration failed', error));
   }
 }
 
@@ -1248,6 +1250,7 @@ function bindEvents() {
     const ok = window.confirm('Стереть все дни, недели и настройки PRIME RPG?');
     if (!ok) return;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY_V3);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY_V1);
     state = defaultState();
@@ -1265,6 +1268,7 @@ function bindEvents() {
 
 function init() {
   try {
+    if (!state) state = loadState();
     renderDailyQuests();
     renderWeeklyBosses();
     bindEvents();
