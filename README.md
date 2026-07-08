@@ -1,4 +1,4 @@
-# PRIME RPG v1.6
+# PRIME RPG v1.7
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -21,7 +21,7 @@
 
 
 
-## v1.6
+## v1.7
 
 - календарь вынесен в отдельную вкладку `Календарь`;
 - на ПК вкладки остаются сверху;
@@ -68,14 +68,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.6"
+git commit -m "Update PRIME RPG v1.7"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.6.0
+https://coldqh.github.io/LifeRPG/?v=1.7.0
 ```
 
 ## Quest pack
@@ -116,3 +116,23 @@ https://coldqh.github.io/LifeRPG/?v=1.6.0
 - Убраны рамки вокруг маленьких emoji внутри строк.
 - BODY icon заменён на 💪.
 - Версия и PWA-кэш подняты до 1.1.0.
+
+
+## v1.7
+
+- Пул ежедневных челленджей заменён на жёсткий набор из 10 испытаний.
+- Чтение усилено до 2 часов.
+- Уборка усилена до генеральной уборки всей квартиры.
+
+### Hard Challenge Pool
+
+1. 20K March — 20 000+ шагов за день — +80 XP
+2. 25K March — 25 000+ шагов за день — +120 XP
+3. Morning Run — пробежка утром 25+ минут — +90 XP
+4. Roadwork Day — 40+ минут лёгкого бега / ходьбы в темпе — +100 XP
+5. Double Training — 2 разные физические активности за день — +120 XP
+6. Mobility Lock — 40 минут мобилити / растяжки / суставки — +70 XP
+7. No Sugar Hard Mode — 24 часа без сладкого, фастфуда и перекусов-мусора — +90 XP
+8. Read 120 — 2 часа книги без телефона рядом — +140 XP
+9. Full Apartment Reset — генеральная уборка всей квартиры — +150 XP
+10. Zero Excuses Morning — в первые 2 часа закрыть BODY или CREATOR — +100 XP

@@ -13,8 +13,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.6';
-const APP_CACHE_QUERY = '1.6.0';
+const APP_VERSION = 'v1.7';
+const APP_CACHE_QUERY = '1.7.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -109,26 +109,16 @@ const WEEKLY_BOSSES = [
 ];
 
 const DAILY_CHALLENGES = [
-  { id: 'morning_walk', title: 'Утренняя прогулка', text: 'утренняя прогулка 20+ минут', xp: 25, stat: 'BODY', icon: '🚶' },
-  { id: 'morning_run', title: 'Утренняя пробежка', text: 'лёгкая пробежка 10+ минут', xp: 40, stat: 'BODY', icon: '🏃' },
-  { id: 'steps_20k', title: '20K steps', text: '20 000+ шагов за день', xp: 60, stat: 'BODY', icon: '👟' },
-  { id: 'cold_shower', title: 'Холодный душ', text: 'холодный душ / холодное завершение', xp: 30, stat: 'DISCIPLINE', icon: '🚿' },
-  { id: 'deep_work_60', title: 'Deep work', text: '60 минут фокуса без переключения', xp: 50, stat: 'CREATOR', icon: '🎯' },
-  { id: 'reading_30', title: 'Чтение 30', text: '30+ минут чтения', xp: 30, stat: 'MIND', icon: '📚' },
-  { id: 'no_sugar_day', title: 'No sugar', text: 'день без сладкого мусора', xp: 35, stat: 'DISCIPLINE', icon: '🚫' },
-  { id: 'mobility_20', title: 'Mobility', text: '20 минут мобилити / растяжки', xp: 30, stat: 'BODY', icon: '🧘' },
-  { id: 'clean_room', title: 'Чистая база', text: 'уборка 15+ минут', xp: 25, stat: 'DISCIPLINE', icon: '🧹' },
-  { id: 'plan_tomorrow', title: 'План завтра', text: 'план завтрашнего дня из 3 пунктов', xp: 20, stat: 'DISCIPLINE', icon: '🗒️' },
-  { id: 'social_ping', title: 'Контакт', text: 'написать / поговорить с человеком без залипа', xp: 25, stat: 'CALM', icon: '💬' },
-  { id: 'learn_term', title: 'Новый термин', text: 'выучить и записать 1 новый термин', xp: 20, stat: 'MIND', icon: '🧠' },
-  { id: 'project_ship', title: 'Ship small', text: 'сделать маленький видимый результат в проекте', xp: 45, stat: 'CREATOR', icon: '🛠️' },
-  { id: 'breathing_10', title: 'Дыхание', text: '10 минут дыхания / спокойной паузы', xp: 25, stat: 'CALM', icon: '🌬️' },
-  { id: 'no_phone_60', title: 'No phone', text: '60 минут без телефона', xp: 35, stat: 'DISCIPLINE', icon: '📵' },
-  { id: 'protein_meal', title: 'Нормальная еда', text: 'собрать нормальный белковый приём еды', xp: 25, stat: 'BODY', icon: '🍗' },
-  { id: 'skill_drill', title: 'Skill drill', text: '20 минут отработки навыка', xp: 35, stat: 'MIND', icon: '⚙️' },
-  { id: 'money_check', title: 'Money check', text: 'записать траты / проверить деньги', xp: 20, stat: 'WORK', icon: '💸' },
-  { id: 'walk_after_meal', title: 'After meal walk', text: 'прогулка 15 минут после еды', xp: 25, stat: 'BODY', icon: '🚶' },
-  { id: 'one_hard_task', title: 'Hard task', text: 'закрыть одну неприятную мелкую задачу', xp: 35, stat: 'WORK', icon: '✅' }
+  { id: 'hard_steps_20k', title: '20K March', text: '20 000+ шагов за день', xp: 80, stat: 'BODY', icon: '👟' },
+  { id: 'hard_steps_25k', title: '25K March', text: '25 000+ шагов за день', xp: 120, stat: 'BODY', icon: '🥾' },
+  { id: 'hard_morning_run_25', title: 'Morning Run', text: 'пробежка утром 25+ минут', xp: 90, stat: 'BODY', icon: '🏃' },
+  { id: 'hard_roadwork_40', title: 'Roadwork Day', text: '40+ минут лёгкого бега / ходьбы в темпе', xp: 100, stat: 'BODY', icon: '🛣️' },
+  { id: 'hard_double_training', title: 'Double Training', text: '2 разные физические активности за день', xp: 120, stat: 'BODY', icon: '⚡' },
+  { id: 'hard_mobility_40', title: 'Mobility Lock', text: '40 минут мобилити / растяжки / суставки', xp: 70, stat: 'BODY', icon: '🧘' },
+  { id: 'hard_no_sugar_24', title: 'No Sugar Hard Mode', text: '24 часа без сладкого, фастфуда и перекусов-мусора', xp: 90, stat: 'DISCIPLINE', icon: '🚫' },
+  { id: 'hard_read_120', title: 'Read 120', text: '2 часа книги без телефона рядом', xp: 140, stat: 'MIND', icon: '📚' },
+  { id: 'hard_full_apartment_reset', title: 'Full Apartment Reset', text: 'генеральная уборка всей квартиры', xp: 150, stat: 'DISCIPLINE', icon: '🧹' },
+  { id: 'hard_zero_excuses_morning', title: 'Zero Excuses Morning', text: 'в первые 2 часа закрыть BODY или CREATOR', xp: 100, stat: 'DISCIPLINE', icon: '🌅' }
 ];
 
 const ACHIEVEMENTS = [
@@ -550,7 +540,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.6.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.7.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
