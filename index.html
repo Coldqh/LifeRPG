@@ -6,14 +6,11 @@
   <meta name="theme-color" content="#07090e" />
   <meta name="description" content="PRIME RPG — элитная система прокачки реальной жизни: день, неделя, XP, статы, достижения и челленджи." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=2.1.0" />
+  <link rel="manifest" href="manifest.json?v=2.1.1" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=2.1.0" />
+  <link rel="stylesheet" href="styles.css?v=2.1.1" />
 </head>
 <body>
-  <div class="ambient ambient-one" aria-hidden="true"></div>
-  <div class="ambient ambient-two" aria-hidden="true"></div>
-
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-block">
@@ -26,7 +23,7 @@
 
       <div class="runtime-strip" aria-label="Системная информация">
         <span id="saveStatusValue" class="save-status is-saved">Сохранено</span>
-        <span id="appVersionValue">v2.1</span>
+        <span id="appVersionValue">v2.1.1</span>
         <span id="moscowDateValue">—</span>
         <span id="moscowWeekdayValue">—</span>
         <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -69,24 +66,19 @@
 
     <main>
       <section id="dashboard" class="tab-panel active">
-        <section class="prime-hero">
-          <div class="hero-grid-lines" aria-hidden="true"></div>
+        <section class="prime-hero prime-hero-compact">
           <div class="prime-hero-copy">
-            <div class="hero-status-line"><span class="live-dot"></span> PRIME SYSTEM ONLINE</div>
-            <p class="hero-index">PRIME / 002</p>
-            <h2>Собирай себя.<br /><em>Каждый день.</em></h2>
-            <p class="hero-description">Один экран для уровня, статов, недельного ритма и реального прогресса. Ничего лишнего.</p>
-            <div class="hero-snapshots">
-              <article><span>STATUS</span><strong id="statusRank">Ordinary</strong></article>
-              <article><span>TODAY</span><strong id="heroTodayXp">+0 XP</strong></article>
-              <article><span>WEEK</span><strong id="heroWeekXp">0+0 XP</strong></article>
+            <div class="profile-heading">
+              <div>
+                <p class="hero-index">PRIME PROFILE</p>
+                <h2>Твой прогресс</h2>
+              </div>
+              <strong class="profile-rank" id="statusRank">Ordinary</strong>
             </div>
-          </div>
-          <div class="prime-hero-visual">
-            <img src="assets/prime-core.svg" alt="Абстрактное ядро PRIME" />
-            <div class="core-meta core-meta-a"><span>CORE</span><strong>ACTIVE</strong></div>
-            <div class="core-meta core-meta-b"><span>MODE</span><strong>BUILD</strong></div>
-            <div class="core-caption"><span>PRIME CORE</span><strong>REAL LIFE PROGRESSION ENGINE</strong></div>
+            <div class="hero-snapshots">
+              <article><span>Сегодня</span><strong id="heroTodayXp">+0 XP</strong></article>
+              <article><span>Неделя</span><strong id="heroWeekXp">0+0 XP</strong></article>
+            </div>
           </div>
         </section>
 
@@ -234,10 +226,13 @@
           <div class="section-head"><div><p class="eyebrow">daily challenge</p><h2>Испытание дня</h2></div><span class="section-code">RANDOM</span></div>
           <form id="challengeForm" class="form-stack"><div id="dailyChallengeBox"></div></form>
         </section>
-        <section class="panel">
-          <div class="section-head"><div><p class="eyebrow">challenge archive</p><h2>Библиотека</h2></div><span class="section-code">10 TRIALS</span></div>
+        <details class="panel collapsible-panel">
+          <summary>
+            <span>Библиотека челленджей</span>
+            <small>10 испытаний</small>
+          </summary>
           <div id="challengeLibrary" class="mini-library-grid"></div>
-        </section>
+        </details>
       </section>
 
       <section id="history" class="tab-panel">
@@ -285,7 +280,7 @@
               <button class="ghost-btn" id="resetQuestConfigBtn" type="button">Сбросить квесты</button>
               <button class="ghost-btn" id="enableNotificationsBtn" type="button">Уведомления</button>
             </div>
-            <div class="schema-box"><p class="muted">Поддерживаются <b>merge</b>, <b>replace</b> и <b>replace_all</b>.</p><code>{ "type": "prime-rpg-quest-pack", "version": 2, "dailyQuests": [...], "weeklyQuests": [...] }</code></div>
+            <details class="schema-box"><summary>Формат Quest Pack</summary><p class="muted">Поддерживаются <b>merge</b>, <b>replace</b> и <b>replace_all</b>.</p><code>{ "type": "prime-rpg-quest-pack", "version": 2, "dailyQuests": [...], "weeklyQuests": [...] }</code></details>
           </section>
         </section>
 
@@ -320,6 +315,6 @@
       tick(); window.setInterval(tick, 60000);
     })();
   </script>
-  <script src="app.js?v=2.1.0"></script>
+  <script src="app.js?v=2.1.1"></script>
 </body>
 </html>
