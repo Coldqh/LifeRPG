@@ -15,8 +15,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v2.0';
-const APP_CACHE_QUERY = '2.0.0';
+const APP_VERSION = 'v2.0.1';
+const APP_CACHE_QUERY = '2.0.1';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -595,7 +595,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=2.0.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=2.0.1 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -1724,19 +1724,22 @@ function switchTab(tabId) {
     closeMobileMenu();
     return;
   }
-  $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
-  if (current) {
-    current.classList.remove('active');
-    current.classList.add('leaving');
-    window.setTimeout(() => current.classList.remove('leaving'), 240);
-  }
-  next.classList.add('active', 'entering');
-  window.setTimeout(() => next.classList.remove('entering'), 260);
-  if (tabId === 'calendar') renderMonthCalendar();
-  if (tabId === 'challenges') renderChallenges();
-  if (tabId === 'achievements') renderAchievements();
+
+  // Сначала закрываем мобильное меню и возвращаемся наверх без smooth-scroll.
+  // Так браузер не пытается одновременно анимировать скролл, высоту страницы и вкладку.
   closeMobileMenu();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (window.scrollY > 2) window.scrollTo(0, 0);
+
+  $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
+
+  if (current) current.classList.remove('active', 'entering', 'leaving');
+  next.classList.remove('entering', 'leaving');
+  next.classList.add('active');
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    next.classList.add('entering');
+    window.setTimeout(() => next.classList.remove('entering'), 220);
+  }
 }
 
 function exportData() {
@@ -2141,6 +2144,15 @@ function bindEvents() {
   window.addEventListener('focus', () => syncClock(false));
 }
 
+function startClockTicker() {
+  updateClockUI();
+  const delay = 60000 - (Date.now() % 60000) + 40;
+  window.setTimeout(() => {
+    updateClockUI();
+    window.setInterval(updateClockUI, 60000);
+  }, delay);
+}
+
 function init() {
   try {
     if (!state) state = loadState();
@@ -2153,7 +2165,7 @@ function init() {
     renderAll();
     registerServiceWorker();
     window.setInterval(() => syncClock(false), ROLLOVER_CHECK_MS);
-    window.setInterval(updateClockUI, 1000);
+    startClockTicker();
   } catch (error) {
     console.error('PRIME RPG boot failed', error);
     showBootError(error);

@@ -37,7 +37,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; }
 body {
   margin: 0;
   min-height: 100vh;
@@ -250,9 +250,12 @@ h3 { margin-bottom: 0; font-size: 1.08rem; line-height: 1.12; }
 
 main { min-height: 60vh; }
 .tab-panel { display: none; }
-.tab-panel.active { display: block; animation: panelIn .42s cubic-bezier(.22,.75,.2,1) both; }
-.tab-panel.entering { animation: tabSlideIn .42s cubic-bezier(.22,.75,.2,1) both; }
-.tab-panel.leaving { display: block; position: absolute; width: min(var(--max-width), calc(100% - 32px)); pointer-events: none; animation: tabSlideOut .22s ease both; }
+.tab-panel.active { display: block; }
+.tab-panel.entering {
+  animation: tabSlideIn .2s cubic-bezier(.2,.72,.24,1) both;
+  will-change: opacity, transform;
+}
+.tab-panel.leaving { display: none; }
 
 .panel,
 .prime-hero,
@@ -628,9 +631,8 @@ main { min-height: 60vh; }
 @keyframes ambientFloat { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(30px,-24px,0) scale(1.1); } }
 @keyframes coreFloat { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(1.2deg); } }
 @keyframes livePulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.82); } }
-@keyframes panelIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes tabSlideIn { from { opacity: 0; transform: translateX(28px) scale(.99); filter: blur(3px); } to { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); } }
-@keyframes tabSlideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-18px); } }
+@keyframes panelIn { from { opacity: 0; transform: translate3d(0, 7px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes tabSlideIn { from { opacity: .18; transform: translate3d(12px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 
 @media (max-width: 1080px) {
   .tabbar { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -734,6 +736,15 @@ main { min-height: 60vh; }
   .wrap-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
   .ghost-btn, .primary-btn, .danger-btn, .file-label { width: 100%; min-height: 41px; }
   .update-banner { align-items: flex-start; flex-direction: column; }
+
+  /* Mobile performance: fixed blur layers and animated filters are expensive on Safari/Chrome. */
+  .ambient { display: none; }
+  body::before { position: absolute; }
+  .topbar,
+  .tabbar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .menu-backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .prime-hero-visual img { animation: none; }
+  .stat-card:hover { transform: none; box-shadow: var(--shadow-lg); }
 }
 
 @media (max-width: 460px) {
