@@ -15,10 +15,15 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v2.0.1';
-const APP_CACHE_QUERY = '2.0.1';
+const APP_VERSION = 'v2.1';
+const APP_CACHE_QUERY = '2.1.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
+const AUTO_BACKUP_PREFIX = 'prime-rpg-auto-backup-';
+const RECOVERY_BACKUP_PREFIX = 'prime-rpg-recovery-backup-';
+const MAX_AUTO_BACKUPS = 7;
+const MAX_RECOVERY_BACKUPS = 5;
+let saveStatusTimer = null;
 
 const STAT_KEYS = ['BODY', 'FIGHTER', 'MIND', 'WORK', 'CREATOR', 'CALM', 'DISCIPLINE'];
 const LEVELS = [0, 1000, 2200, 3600, 5200, 7000, 9000, 11500, 14500, 18000, 22000, 27000, 33000, 40000];
@@ -305,7 +310,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 20,
+    version: 21,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -315,6 +320,12 @@ function defaultState() {
     config: {
       dailyQuests: filterActiveDailyQuests(DEFAULT_DAILY_QUESTS),
       weeklyQuests: filterActiveWeeklyQuests(WEEKLY_BOSSES)
+    },
+    ui: {
+      activeTab: 'dashboard',
+      hideCompleted: false,
+      collapsedDaily: [],
+      collapsedWeekly: []
     },
     system: {
       currentDate: today,
@@ -346,9 +357,10 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 20,
+    version: 21,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
+    ui: { ...base.ui, ...(parsed.ui || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
     days: Array.isArray(parsed.days) ? parsed.days : [],
     weeks: Array.isArray(parsed.weeks) ? parsed.weeks : []
@@ -374,19 +386,102 @@ function migrateState(parsed) {
     getNextDayNumberFromDays(stateLike.days),
     Number(stateLike.currentDay.dayNumber || 1)
   );
+  stateLike.ui.activeTab = document.getElementById(stateLike.ui.activeTab) ? stateLike.ui.activeTab : 'dashboard';
+  stateLike.ui.hideCompleted = Boolean(stateLike.ui.hideCompleted);
+  stateLike.ui.collapsedDaily = Array.isArray(stateLike.ui.collapsedDaily) ? stateLike.ui.collapsedDaily : [];
+  stateLike.ui.collapsedWeekly = Array.isArray(stateLike.ui.collapsedWeekly) ? stateLike.ui.collapsedWeekly : [];
   return stateLike;
 }
 
-function saveState() {
+function setSaveStatus(status, detail = '') {
+  const node = $('#saveStatusValue');
+  if (!node) return;
+  node.classList.remove('is-saving', 'is-saved', 'is-error');
+  if (status === 'saving') {
+    node.classList.add('is-saving');
+    node.textContent = 'Сохранение…';
+    return;
+  }
+  if (status === 'error') {
+    node.classList.add('is-error');
+    node.textContent = detail || 'Ошибка сохранения';
+    return;
+  }
+  node.classList.add('is-saved');
+  const parts = getMoscowParts();
+  node.textContent = `Сохранено ${parts.hour}:${parts.minute}`;
+}
+
+function snapshotEnvelope(reason, sourceState = state) {
+  return {
+    type: 'prime-rpg-auto-snapshot',
+    version: 1,
+    reason,
+    createdAt: new Date().toISOString(),
+    moscowStamp: nowMoscowStamp(),
+    state: sourceState
+  };
+}
+
+function trimSnapshotKeys(prefix, limit) {
+  const keys = Object.keys(localStorage)
+    .filter((key) => key.startsWith(prefix))
+    .sort()
+    .reverse();
+  keys.slice(limit).forEach((key) => localStorage.removeItem(key));
+}
+
+function writeDailySnapshot() {
   if (!state) return;
-  state.version = 20;
+  const key = `${AUTO_BACKUP_PREFIX}${todayMoscowISO()}`;
+  localStorage.setItem(key, JSON.stringify(snapshotEnvelope('daily-auto')));
+  trimSnapshotKeys(AUTO_BACKUP_PREFIX, MAX_AUTO_BACKUPS);
+}
+
+function createRecoverySnapshot(reason = 'manual') {
+  if (!state) return null;
+  try {
+    const key = `${RECOVERY_BACKUP_PREFIX}${Date.now()}`;
+    localStorage.setItem(key, JSON.stringify(snapshotEnvelope(reason)));
+    trimSnapshotKeys(RECOVERY_BACKUP_PREFIX, MAX_RECOVERY_BACKUPS);
+    return key;
+  } catch (error) {
+    console.warn('Recovery snapshot failed', error);
+    return null;
+  }
+}
+
+function getStoredSnapshots() {
+  const keys = Object.keys(localStorage).filter((key) => key.startsWith(AUTO_BACKUP_PREFIX) || key.startsWith(RECOVERY_BACKUP_PREFIX));
+  return keys.map((key) => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key));
+      const stamp = parsed?.moscowStamp || parsed?.createdAt || key.replace(AUTO_BACKUP_PREFIX, '').replace(RECOVERY_BACKUP_PREFIX, '');
+      return { key, stamp, reason: parsed?.reason || 'backup', createdAt: parsed?.createdAt || '', payload: parsed };
+    } catch (_) {
+      return null;
+    }
+  }).filter(Boolean).sort((a, b) => String(b.createdAt || b.key).localeCompare(String(a.createdAt || a.key)));
+}
+
+function saveState(options = {}) {
+  if (!state) return;
+  const { quiet = false, snapshot = true } = options;
+  if (!quiet) setSaveStatus('saving');
+  state.version = 21;
   state.system.lastSyncAt = nowMoscowStamp();
   const payload = JSON.stringify(state);
   try {
     localStorage.setItem(STORAGE_KEY, payload);
     localStorage.setItem(STORAGE_KEY_BACKUP, payload);
+    if (snapshot) {
+      try { writeDailySnapshot(); } catch (snapshotError) { console.warn('Daily snapshot failed', snapshotError); }
+    }
+    window.clearTimeout(saveStatusTimer);
+    saveStatusTimer = window.setTimeout(() => setSaveStatus('saved'), quiet ? 0 : 160);
   } catch (error) {
     console.error('PRIME RPG save failed', error);
+    setSaveStatus('error');
     showToast('Не удалось сохранить данные');
   }
 }
@@ -595,7 +690,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=2.0.1 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=2.1.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -870,14 +965,18 @@ function getAchievementStates() {
 function renderDailyQuests() {
   const grid = $('#dailyQuestGrid');
   if (!grid) return;
+  const collapsed = new Set(state?.ui?.collapsedDaily || []);
   grid.innerHTML = getDailyQuests().map((quest) => `
-    <article class="quest-card" data-category="${escapeHTML(quest.key)}" data-code="${escapeHTML(String(quest.title || quest.key).slice(0, 2))}">
+    <article class="quest-card${collapsed.has(quest.key) ? ' collapsed' : ''}" data-category="${escapeHTML(quest.key)}" data-code="${escapeHTML(String(quest.title || quest.key).slice(0, 2))}">
       <header>
         <div>
           <h3><span class="card-art">${categoryIcon(quest.title)}</span>${escapeHTML(quest.title)}</h3>
           <div class="quest-meta">${quest.items.length} ACTIONS · ${escapeHTML(quest.stat || quest.title)}</div>
         </div>
-        <strong class="quest-xp">+${quest.maxXp}</strong>
+        <div class="quest-head-actions">
+          <strong class="quest-xp">+${quest.maxXp}</strong>
+          <button class="category-collapse-btn" type="button" data-collapse-scope="daily" data-collapse-category="${escapeHTML(quest.key)}" aria-expanded="${collapsed.has(quest.key) ? 'false' : 'true'}" aria-label="Свернуть категорию ${escapeHTML(quest.title)}">⌄</button>
+        </div>
       </header>
       <div class="checkbox-grid">
         ${quest.items.map((item) => checkRow(`q_${item.id}`, item.text, item.xp)).join('')}
@@ -892,14 +991,18 @@ function renderDailyQuests() {
 function renderWeeklyBosses() {
   const grid = $('#weeklyBossGrid');
   if (!grid) return;
+  const collapsed = new Set(state?.ui?.collapsedWeekly || []);
   grid.innerHTML = getWeeklyQuests().map((boss) => `
-    <article class="quest-card" data-category="${escapeHTML(boss.key)}" data-code="${escapeHTML(String(boss.title || boss.key).slice(0, 2))}">
+    <article class="quest-card${collapsed.has(boss.key) ? ' collapsed' : ''}" data-category="${escapeHTML(boss.key)}" data-code="${escapeHTML(String(boss.title || boss.key).slice(0, 2))}">
       <header>
         <div>
           <h3><span class="card-art">${categoryIcon(boss.title)}</span>${escapeHTML(boss.title)}</h3>
           <div class="quest-meta">${boss.items.length} WEEKLY ACTIONS · ${escapeHTML(boss.stat || boss.title)}</div>
         </div>
-        <strong class="quest-xp">+${boss.maxXp}</strong>
+        <div class="quest-head-actions">
+          <strong class="quest-xp">+${boss.maxXp}</strong>
+          <button class="category-collapse-btn" type="button" data-collapse-scope="weekly" data-collapse-category="${escapeHTML(boss.key)}" aria-expanded="${collapsed.has(boss.key) ? 'false' : 'true'}" aria-label="Свернуть категорию ${escapeHTML(boss.title)}">⌄</button>
+        </div>
       </header>
       <div class="checkbox-grid">
         ${boss.items.map((item) => checkRow(`b_${item.id}`, item.text, item.xp)).join('')}
@@ -941,6 +1044,7 @@ function fillDailyForm() {
   suppressAutosave = false;
   updateDailyPreview();
   updateClockUI();
+  applyQuestVisibility();
 }
 
 function fillChallengeForm() {
@@ -1030,6 +1134,8 @@ function autosaveCurrentDay() {
   updateDailyPreview();
   renderDashboard();
   renderChallenges();
+  updateDailyCommand();
+  applyQuestVisibility();
 }
 
 function autosaveCurrentWeek() {
@@ -1047,6 +1153,68 @@ function updateDailyPreview() {
   const result = calculateDailyFromDraft(state.currentDay);
   title.textContent = `${result.netXp} XP — ${result.rank}`;
   details.textContent = `Live-день: ${formatDate(state.currentDay.date)}. Плюс: ${result.positiveXp} XP. Штрафы: ${result.penaltyXp} XP. База BODY/WORK/CREATOR/CALM: ${['body', 'work', 'creator', 'calm'].map((key) => result.questXp[key] || 0).reduce((a, b) => a + b, 0)} / 150 XP.`;
+}
+
+function getDailyRankTarget(xp) {
+  const targets = [
+    { value: 101, label: 'Solid Day' },
+    { value: 151, label: 'Prime Day' },
+    { value: 201, label: 'Elite Day' },
+    { value: 250, label: 'Legendary Day' }
+  ];
+  const next = targets.find((target) => xp < target.value);
+  if (!next) return { label: 'Legendary Day закрыт', remaining: 0, target: 250 };
+  return { label: `До ${next.label}: ${next.value - xp} XP`, remaining: next.value - xp, target: next.value };
+}
+
+function updateDailyCommand() {
+  const result = calculateDailyFromDraft(state.currentDay);
+  const items = getDailyQuests().flatMap((quest) => quest.items);
+  const completed = new Set(state.currentDay?.completed || []);
+  const doneCount = items.filter((item) => completed.has(item.id)).length;
+  const target = getDailyRankTarget(result.netXp);
+  if ($('#dailyPendingXp')) $('#dailyPendingXp').textContent = `${result.netXp} XP`;
+  if ($('#dailyCompletedCount')) $('#dailyCompletedCount').textContent = `${doneCount} / ${items.length} действий`;
+  if ($('#dailyRankTarget')) $('#dailyRankTarget').textContent = target.label;
+  if ($('#dailyRankProgressBar')) $('#dailyRankProgressBar').style.width = `${Math.max(0, Math.min(100, (result.netXp / 250) * 100))}%`;
+}
+
+function applyQuestVisibility() {
+  const hide = Boolean(state?.ui?.hideCompleted);
+  const grid = $('#dailyQuestGrid');
+  if (grid) {
+    $$('.check-row', grid).forEach((row) => {
+      const input = $('input[type="checkbox"]', row);
+      row.classList.toggle('is-hidden-completed', hide && Boolean(input?.checked));
+    });
+  }
+  const button = $('#hideCompletedBtn');
+  if (button) {
+    button.setAttribute('aria-pressed', hide ? 'true' : 'false');
+    button.textContent = hide ? 'Показать выполненные' : 'Скрыть выполненные';
+    button.classList.toggle('active', hide);
+  }
+}
+
+function toggleHideCompleted() {
+  state.ui.hideCompleted = !state.ui.hideCompleted;
+  saveState({ quiet: true });
+  applyQuestVisibility();
+}
+
+function toggleQuestCategory(scope, key) {
+  const field = scope === 'weekly' ? 'collapsedWeekly' : 'collapsedDaily';
+  const values = new Set(state.ui[field] || []);
+  if (values.has(key)) values.delete(key); else values.add(key);
+  state.ui[field] = [...values];
+  saveState({ quiet: true });
+  const grid = scope === 'weekly' ? $('#weeklyBossGrid') : $('#dailyQuestGrid');
+  const card = grid ? $$('[data-category]', grid).find((item) => item.dataset.category === key) : null;
+  if (card) {
+    card.classList.toggle('collapsed', values.has(key));
+    const button = card.querySelector('[data-collapse-category]');
+    if (button) button.setAttribute('aria-expanded', values.has(key) ? 'false' : 'true');
+  }
 }
 
 function updateWeeklyPreview() {
@@ -1658,6 +1826,18 @@ function renderHistory() {
 function renderSettings() {
   const info = $('#questImportInfo');
   if (info) info.textContent = `Категорий: ${getDailyQuests().length}. Максимум 10 квестов на категорию.`;
+  const select = $('#backupSelect');
+  const snapshots = getStoredSnapshots();
+  if (select) {
+    select.innerHTML = snapshots.length
+      ? snapshots.map((item, index) => `<option value="${escapeHTML(item.key)}">${index === 0 ? 'Последняя · ' : ''}${escapeHTML(item.stamp)} · ${escapeHTML(item.reason)}</option>`).join('')
+      : '<option value="">Копий пока нет</option>';
+    select.disabled = !snapshots.length;
+  }
+  const restore = $('#restoreBackupBtn');
+  if (restore) restore.disabled = !snapshots.length;
+  const backupInfo = $('#backupInfo');
+  if (backupInfo) backupInfo.textContent = snapshots.length ? `Доступно копий: ${snapshots.length}. Хранятся 7 дневных и аварийные снимки.` : 'Копия появится после первого сохранения.';
 }
 
 function buildChatPrompt() {
@@ -1731,14 +1911,48 @@ function switchTab(tabId) {
   if (window.scrollY > 2) window.scrollTo(0, 0);
 
   $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
+  state.ui.activeTab = tabId;
+  saveState({ quiet: true, snapshot: false });
 
   if (current) current.classList.remove('active', 'entering', 'leaving');
   next.classList.remove('entering', 'leaving');
   next.classList.add('active');
+  if (tabId === 'settings') renderSettings();
 
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     next.classList.add('entering');
     window.setTimeout(() => next.classList.remove('entering'), 220);
+  }
+}
+
+function restoreActiveTab() {
+  const tabId = state?.ui?.activeTab || 'dashboard';
+  const next = document.getElementById(tabId) || document.getElementById('dashboard');
+  $$('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel === next));
+  $$('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === next.id));
+}
+
+function restoreSelectedBackup() {
+  const key = $('#backupSelect')?.value;
+  if (!key) return;
+  const ok = window.confirm('Восстановить выбранную копию? Текущее состояние будет сохранено в аварийный снимок.');
+  if (!ok) return;
+  try {
+    createRecoverySnapshot('before-restore');
+    const envelope = JSON.parse(localStorage.getItem(key));
+    const restored = envelope?.state || envelope;
+    state = migrateState(restored);
+    saveState();
+    renderDailyQuests();
+    renderWeeklyBosses();
+    fillDailyForm();
+    fillWeeklyForm();
+    renderAll();
+    restoreActiveTab();
+    showToast('Резервная копия восстановлена');
+  } catch (error) {
+    console.error('Backup restore failed', error);
+    showToast('Не удалось восстановить копию');
   }
 }
 
@@ -1789,6 +2003,7 @@ function mergeQuestCategories(current, incomingCategories, mode) {
 }
 
 function applyQuestPack(payload) {
+  createRecoverySnapshot('before-quest-import');
   const pack = normalizeQuestPack(payload);
   const currentDaily = cloneQuestConfig(getDailyQuests());
   const currentWeekly = cloneQuestConfig(getWeeklyQuests());
@@ -1911,6 +2126,7 @@ function downloadQuestTemplate() {
 function resetQuestConfig() {
   const ok = window.confirm('Сбросить дневные и недельные квесты к базовым? История останется.');
   if (!ok) return;
+  createRecoverySnapshot('before-quest-reset');
   state.config = {
     ...(state.config || {}),
     dailyQuests: filterActiveDailyQuests(DEFAULT_DAILY_QUESTS),
@@ -1938,6 +2154,7 @@ function importData(file) {
         applyQuestPack(imported);
         return;
       }
+      createRecoverySnapshot('before-backup-import');
       state = migrateState(imported);
       saveState();
       syncClock(false);
@@ -2040,6 +2257,8 @@ function renderAll() {
   renderSettings();
   updateDailyPreview();
   updateWeeklyPreview();
+  updateDailyCommand();
+  applyQuestVisibility();
   updateClockUI();
 }
 
@@ -2071,6 +2290,13 @@ function bindEvents() {
   $$('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
   if ($('#mobileMenuBtn')) $('#mobileMenuBtn').addEventListener('click', toggleMobileMenu);
   if ($('#menuBackdrop')) $('#menuBackdrop').addEventListener('click', closeMobileMenu);
+  if ($('#hideCompletedBtn')) $('#hideCompletedBtn').addEventListener('click', toggleHideCompleted);
+  if ($('#restoreBackupBtn')) $('#restoreBackupBtn').addEventListener('click', restoreSelectedBackup);
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-collapse-category]');
+    if (!button) return;
+    toggleQuestCategory(button.dataset.collapseScope, button.dataset.collapseCategory);
+  });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMobileMenu(); });
   const dailyForm = $('#dailyForm');
   if (dailyForm) {
@@ -2121,7 +2347,10 @@ function bindEvents() {
   $('#resetBtn').addEventListener('click', () => {
     const ok = window.confirm('Стереть все дни, недели и настройки PRIME RPG?');
     if (!ok) return;
-    Object.keys(localStorage).filter((key) => key.startsWith('prime-rpg')).forEach((key) => localStorage.removeItem(key));
+    createRecoverySnapshot('before-full-reset');
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('prime-rpg') && !key.startsWith(AUTO_BACKUP_PREFIX) && !key.startsWith(RECOVERY_BACKUP_PREFIX))
+      .forEach((key) => localStorage.removeItem(key));
     if ('caches' in window) caches.keys().then((keys) => keys.filter((key) => key.startsWith('prime-rpg')).forEach((key) => caches.delete(key))).catch(() => {});
     state = defaultState();
     state.days = [];
@@ -2133,7 +2362,7 @@ function bindEvents() {
     fillDailyForm();
     fillWeeklyForm();
     renderAll();
-    showToast('Всё сброшено: история очищена');
+    showToast('Всё сброшено. Аварийная копия сохранена');
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) forceSaveNow();
@@ -2163,6 +2392,8 @@ function init() {
     fillDailyForm();
     fillWeeklyForm();
     renderAll();
+    restoreActiveTab();
+    setSaveStatus('saved');
     registerServiceWorker();
     window.setInterval(() => syncClock(false), ROLLOVER_CHECK_MS);
     startClockTicker();

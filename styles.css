@@ -767,3 +767,56 @@ main { min-height: 60vh; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+
+/* v2.1 — Reliable Daily Experience */
+.save-status { transition: color .18s ease, border-color .18s ease, background .18s ease; }
+.save-status.is-saving { color: var(--gold); border-color: rgba(244,207,121,.25); background: rgba(244,207,121,.07); }
+.save-status.is-saved { color: var(--lime); border-color: rgba(183,255,100,.22); }
+.save-status.is-error { color: var(--red); border-color: rgba(255,100,127,.28); background: var(--red-soft); }
+
+.daily-command { padding: 16px 18px; }
+.daily-command-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.daily-command-value { display: flex; align-items: baseline; gap: 8px; }
+.daily-command-value strong { font-size: clamp(1.6rem,4vw,2.45rem); line-height: .9; letter-spacing: -.06em; }
+.daily-command-value span { color: var(--lime); font-size: .62rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.daily-command-meta { display: grid; justify-items: end; gap: 4px; text-align: right; }
+.daily-command-meta span { color: var(--muted); font-size: .72rem; }
+.daily-command-meta strong { color: var(--text-soft); font-size: .76rem; }
+.daily-rank-track { height: 7px; margin-top: 14px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.06); }
+.daily-rank-track > div { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg,var(--lime),var(--cyan),var(--violet)); box-shadow: 0 0 18px rgba(183,255,100,.3); transition: width .35s ease; }
+.daily-command-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.compact-action { width: auto !important; min-height: 34px; padding: 7px 11px; }
+.compact-action.active { color: var(--lime); border-color: rgba(183,255,100,.24); background: rgba(183,255,100,.08); }
+.daily-save-hint { color: var(--muted-2); font-size: .67rem; }
+
+.quest-head-actions { display: flex; align-items: center; gap: 8px; }
+.category-collapse-btn { display: grid; place-items: center; width: 31px; height: 31px; padding: 0; border: 1px solid var(--stroke); border-radius: 10px; background: rgba(255,255,255,.035); color: var(--muted); font-size: 1rem; transition: transform .2s ease, color .2s ease, background .2s ease; }
+.category-collapse-btn:hover { color: var(--lime); background: rgba(183,255,100,.07); }
+.quest-card.collapsed .category-collapse-btn { transform: rotate(-90deg); }
+.quest-card.collapsed .checkbox-grid { display: none; }
+.quest-card.collapsed { padding-bottom: 14px; }
+.check-row.is-hidden-completed { display: none; }
+
+.backup-control { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; margin-top: 14px; border: 1px solid var(--stroke); border-radius: 16px; background: rgba(255,255,255,.025); }
+.backup-control strong { display: block; margin-bottom: 3px; }
+.backup-control-actions { display: flex; align-items: center; gap: 8px; min-width: min(100%, 430px); }
+.backup-control select { flex: 1; min-width: 0; min-height: 40px; padding: 8px 11px; border: 1px solid var(--stroke); border-radius: 12px; background: var(--panel-solid); color: var(--text-soft); }
+.backup-control button { width: auto; white-space: nowrap; }
+
+@media (max-width: 780px) {
+  .daily-command { padding: 14px; }
+  .daily-command-main { align-items: flex-start; }
+  .daily-command-meta { justify-items: start; text-align: left; }
+  .daily-command-actions { align-items: flex-start; flex-direction: column; }
+  .compact-action { width: 100% !important; }
+  .backup-control { align-items: stretch; flex-direction: column; }
+  .backup-control-actions { display: grid; grid-template-columns: 1fr; min-width: 0; }
+  .backup-control button { width: 100%; }
+}
+
+@media (max-width: 460px) {
+  .daily-command-main { display: grid; }
+  .daily-command-value strong { font-size: 1.7rem; }
+  .save-status { order: -1; }
+}

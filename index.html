@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#07090e" />
   <meta name="description" content="PRIME RPG — элитная система прокачки реальной жизни: день, неделя, XP, статы, достижения и челленджи." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=2.0.1" />
+  <link rel="manifest" href="manifest.json?v=2.1.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=2.0.1" />
+  <link rel="stylesheet" href="styles.css?v=2.1.0" />
 </head>
 <body>
   <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -25,7 +25,8 @@
       </div>
 
       <div class="runtime-strip" aria-label="Системная информация">
-        <span id="appVersionValue">v2.0.1</span>
+        <span id="saveStatusValue" class="save-status is-saved">Сохранено</span>
+        <span id="appVersionValue">v2.1</span>
         <span id="moscowDateValue">—</span>
         <span id="moscowWeekdayValue">—</span>
         <strong id="moscowTimeValue">--:-- МСК</strong>
@@ -157,6 +158,23 @@
           </div>
           <div class="page-hero-mark">01</div>
         </section>
+        <section class="daily-command panel" aria-label="Прогресс текущего дня">
+          <div class="daily-command-main">
+            <div>
+              <p class="eyebrow">today progress</p>
+              <div class="daily-command-value"><strong id="dailyPendingXp">0 XP</strong><span>pending</span></div>
+            </div>
+            <div class="daily-command-meta">
+              <span id="dailyCompletedCount">0 / 0 действий</span>
+              <strong id="dailyRankTarget">До Solid Day: 101 XP</strong>
+            </div>
+          </div>
+          <div class="daily-rank-track" aria-hidden="true"><div id="dailyRankProgressBar"></div></div>
+          <div class="daily-command-actions">
+            <button class="ghost-btn compact-action" id="hideCompletedBtn" type="button" aria-pressed="false">Скрыть выполненные</button>
+            <span class="daily-save-hint">Галочки сохраняются автоматически</span>
+          </div>
+        </section>
         <form id="dailyForm" class="form-stack">
           <section class="quest-grid" id="dailyQuestGrid"></section>
           <section class="panel danger-panel">
@@ -246,6 +264,16 @@
               <label class="ghost-btn file-label" for="importFile">Импорт backup</label>
               <input id="importFile" type="file" accept="application/json" hidden />
             </div>
+            <div class="backup-control">
+              <div>
+                <strong>Автоматические копии</strong>
+                <p class="muted" id="backupInfo">Хранятся 7 последних дневных снимков.</p>
+              </div>
+              <div class="backup-control-actions">
+                <select id="backupSelect" aria-label="Выбрать резервную копию"></select>
+                <button class="ghost-btn" id="restoreBackupBtn" type="button">Восстановить</button>
+              </div>
+            </div>
           </section>
 
           <section class="panel">
@@ -289,9 +317,9 @@
           set('moscowDateValue', dateRu); set('moscowWeekdayValue', weekdayRu); set('moscowTimeValue', `${p.hour}:${p.minute} МСК`);
         } catch (error) { console.warn('Runtime clock fallback failed', error); }
       }
-      tick(); window.setInterval(tick, 1000);
+      tick(); window.setInterval(tick, 60000);
     })();
   </script>
-  <script src="app.js?v=2.0.1"></script>
+  <script src="app.js?v=2.1.0"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
-  "name": "PRIME RPG",
-  "short_name": "PRIME",
+  "name": "PRIME RPG v2.1",
+  "short_name": "PRIME RPG",
   "description": "Личная RPG-система прокачки реальной жизни.",
   "start_url": "./",
   "display": "standalone",
