@@ -1,4 +1,4 @@
-# PRIME RPG v1.8
+# PRIME RPG v1.9
 
 Компактный habit tracker / RPG-система прокачки реальной жизни.
 
@@ -19,7 +19,7 @@
 - Quest Pack v2 для обновления дневных и недельных квестов;
 - PWA/service worker с network-first стратегией.
 
-## v1.8 — Quest Import 2.0
+## v1.9 — Quest Import 2.0
 
 Главное обновление: один JSON-файл теперь может обновлять сразу:
 
@@ -92,14 +92,14 @@ http://localhost:8080
 
 ```bash
 git add .
-git commit -m "Update PRIME RPG v1.8 quest import"
+git commit -m "Update PRIME RPG v1.9 quest import"
 git push
 ```
 
 Открыть:
 
 ```text
-https://coldqh.github.io/LifeRPG/?v=1.8.0
+https://coldqh.github.io/LifeRPG/?v=1.9.0
 ```
 
 На телефоне после деплоя: `Настройки → Обновить версию`.

@@ -1,11 +1,11 @@
-const CACHE_NAME = 'prime-rpg-v18';
-const APP_VERSION = '1.8.0';
+const CACHE_NAME = 'prime-rpg-v19';
+const APP_VERSION = '1.9.0';
 const APP_SHELL = [
   './',
-  './index.html?v=1.8.0',
-  './styles.css?v=1.8.0',
-  './app.js?v=1.8.0',
-  './manifest.json?v=1.8.0',
+  './index.html?v=1.9.0',
+  './styles.css?v=1.9.0',
+  './app.js?v=1.9.0',
+  './manifest.json?v=1.9.0',
   './assets/icon.svg'
 ];
 
