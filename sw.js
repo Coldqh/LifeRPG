@@ -1,12 +1,14 @@
-const CACHE_NAME = 'prime-rpg-v19';
-const APP_VERSION = '1.9.0';
+const CACHE_NAME = 'prime-rpg-v20';
+const APP_VERSION = '2.0.0';
 const APP_SHELL = [
   './',
-  './index.html?v=1.9.0',
-  './styles.css?v=1.9.0',
-  './app.js?v=1.9.0',
-  './manifest.json?v=1.9.0',
-  './assets/icon.svg'
+  './index.html?v=2.0.0',
+  './styles.css?v=2.0.0',
+  './app.js?v=2.0.0',
+  './manifest.json?v=2.0.0',
+  './assets/icon.svg',
+  './assets/prime-mark.svg',
+  './assets/prime-core.svg'
 ];
 
 self.addEventListener('install', (event) => {

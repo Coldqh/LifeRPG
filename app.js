@@ -15,8 +15,8 @@ const LEGACY_STORAGE_KEY_V5 = 'prime-rpg-state-v5';
 const LEGACY_STORAGE_KEY_V3 = 'prime-rpg-state-v3';
 const LEGACY_STORAGE_KEY = 'prime-rpg-state-v2';
 const LEGACY_STORAGE_KEY_V1 = 'prime-rpg-state-v1';
-const APP_VERSION = 'v1.9';
-const APP_CACHE_QUERY = '1.9.0';
+const APP_VERSION = 'v2.0';
+const APP_CACHE_QUERY = '2.0.0';
 const MOSCOW_TZ = 'Europe/Moscow';
 const ROLLOVER_CHECK_MS = 30 * 1000;
 
@@ -305,7 +305,7 @@ function defaultState() {
   const today = todayMoscowISO();
   const weekId = getWeekStart(today);
   return {
-    version: 19,
+    version: 20,
     profile: {
       playerName: '',
       seasonName: 'Москва / Сушка / Работа',
@@ -346,7 +346,7 @@ function migrateState(parsed) {
   const stateLike = {
     ...base,
     ...parsed,
-    version: 19,
+    version: 20,
     profile: { ...base.profile, ...(parsed.profile || {}) },
     config: { ...base.config, ...(parsed.config || {}) },
     system: { ...base.system, ...(parsed.system || {}) },
@@ -379,7 +379,7 @@ function migrateState(parsed) {
 
 function saveState() {
   if (!state) return;
-  state.version = 19;
+  state.version = 20;
   state.system.lastSyncAt = nowMoscowStamp();
   const payload = JSON.stringify(state);
   try {
@@ -595,7 +595,7 @@ function showBootError(error) {
   const message = error?.message || String(error || 'unknown error');
   const box = document.createElement('div');
   box.className = 'boot-error';
-  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=1.9.0 или очисти данные сайта.</small>`;
+  box.innerHTML = `<strong>PRIME RPG boot error</strong><span>${escapeHTML(message)}</span><small>JS упал при старте. Открой сайт с ?v=2.0.0 или очисти данные сайта.</small>`;
   document.body.prepend(box);
 }
 
@@ -871,10 +871,11 @@ function renderDailyQuests() {
   const grid = $('#dailyQuestGrid');
   if (!grid) return;
   grid.innerHTML = getDailyQuests().map((quest) => `
-    <article class="quest-card">
+    <article class="quest-card" data-category="${escapeHTML(quest.key)}" data-code="${escapeHTML(String(quest.title || quest.key).slice(0, 2))}">
       <header>
         <div>
           <h3><span class="card-art">${categoryIcon(quest.title)}</span>${escapeHTML(quest.title)}</h3>
+          <div class="quest-meta">${quest.items.length} ACTIONS · ${escapeHTML(quest.stat || quest.title)}</div>
         </div>
         <strong class="quest-xp">+${quest.maxXp}</strong>
       </header>
@@ -892,10 +893,11 @@ function renderWeeklyBosses() {
   const grid = $('#weeklyBossGrid');
   if (!grid) return;
   grid.innerHTML = getWeeklyQuests().map((boss) => `
-    <article class="quest-card">
+    <article class="quest-card" data-category="${escapeHTML(boss.key)}" data-code="${escapeHTML(String(boss.title || boss.key).slice(0, 2))}">
       <header>
         <div>
           <h3><span class="card-art">${categoryIcon(boss.title)}</span>${escapeHTML(boss.title)}</h3>
+          <div class="quest-meta">${boss.items.length} WEEKLY ACTIONS · ${escapeHTML(boss.stat || boss.title)}</div>
         </div>
         <strong class="quest-xp">+${boss.maxXp}</strong>
       </header>
@@ -1379,16 +1381,22 @@ function renderDashboard() {
   const weekXp = getWeekCurrentXpParts();
   $('#weekXpValue').textContent = `${weekXp.confirmed}+${weekXp.pending} XP`;
   $('#weekReportsValue').textContent = `${getClosedDaysInWeek(state.currentWeek.weekId).length}/7 дней • неделя +${liveWeek.totalXp} XP`;
+  if ($('#heroTodayXp')) $('#heroTodayXp').textContent = `+${liveDaily.netXp} XP`;
+  if ($('#heroWeekXp')) $('#heroWeekXp').textContent = `${weekXp.confirmed}+${weekXp.pending} XP`;
 
   $('#statBars').innerHTML = STAT_KEYS.map((key) => {
     const value = totals.statXp[key] || 0;
     const pending = totals.pendingStatXp[key] || 0;
     const width = Math.min(100, (value / 2500) * 100);
+    const pendingWidth = Math.min(Math.max(0, 100 - width), (pending / 2500) * 100);
     const text = pending ? `${value}+${pending} XP` : `${value} XP`;
     return `
-      <div>
+      <div class="stat-line" data-stat="${escapeHTML(key)}">
         <div class="bar-top"><span><span class="emoji">${categoryIcon(key)}</span> ${escapeHTML(key)}</span><strong>${escapeHTML(text)}</strong></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${width}%"></div>
+          <div class="bar-pending" style="left:${width}%;width:${pendingWidth}%"></div>
+        </div>
       </div>
     `;
   }).join('');
@@ -1477,7 +1485,7 @@ function renderChallenges() {
   const completed = isChallengeCompleted(state.currentDay);
   if (box) {
     box.innerHTML = `
-      <article class="challenge-card ${completed ? 'is-complete' : ''}">
+      <article class="challenge-card ${completed ? 'is-complete' : ''}" data-rarity="${Number(challenge.xp || 0) >= 140 ? 'legendary' : Number(challenge.xp || 0) >= 100 ? 'elite' : 'hard'}">
         <div class="challenge-main">
           <div class="challenge-icon" aria-hidden="true">${escapeHTML(challenge.icon || '🎲')}</div>
           <div>
@@ -1507,6 +1515,16 @@ function renderChallenges() {
   }
 }
 
+function achievementRarity(item) {
+  const legendary = ['prime_week', 'level_5'];
+  const epic = ['elite_day', 'streak_7', 'no_zero_week', 'discipline_core', 'challenge_5', 'recovery'];
+  const rare = ['prime_day', 'streak_3', 'creator_spark', 'calm_base', 'mind_online', 'challenge_1', 'week_1'];
+  if (legendary.includes(item.id)) return 'legendary';
+  if (epic.includes(item.id)) return 'epic';
+  if (rare.includes(item.id)) return 'rare';
+  return 'common';
+}
+
 function renderAchievements() {
   const grid = $('#achievementGrid');
   const summary = $('#achievementSummary');
@@ -1515,7 +1533,7 @@ function renderAchievements() {
   const unlocked = achievements.filter((item) => item.unlocked).length;
   if (summary) summary.textContent = `${unlocked}/${achievements.length} открыто`;
   grid.innerHTML = achievements.map((item) => `
-    <article class="achievement-card ${item.unlocked ? 'is-unlocked' : 'is-locked'}">
+    <article class="achievement-card ${item.unlocked ? 'is-unlocked' : 'is-locked'}" data-rarity="${achievementRarity(item)}">
       <div class="achievement-icon" aria-hidden="true">${escapeHTML(item.icon)}</div>
       <div>
         <div class="achievement-title">

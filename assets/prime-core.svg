@@ -1,0 +1,41 @@
+<svg width="640" height="640" viewBox="0 0 640 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="coreGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(320 320) rotate(90) scale(224)">
+      <stop stop-color="#E8FFD7"/>
+      <stop offset="0.23" stop-color="#B8FF67" stop-opacity="0.98"/>
+      <stop offset="0.52" stop-color="#65E7FF" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#0B1019" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="126" y1="106" x2="516" y2="541" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B8FF67"/>
+      <stop offset="0.46" stop-color="#67E9FF"/>
+      <stop offset="1" stop-color="#A58BFF"/>
+    </linearGradient>
+    <linearGradient id="ringDim" x1="88" y1="64" x2="561" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B8FF67" stop-opacity="0.72"/>
+      <stop offset="0.48" stop-color="#67E9FF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#A58BFF" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="blur64" x="-120" y="-120" width="880" height="880" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="46"/>
+    </filter>
+    <filter id="glow" x="-60" y="-60" width="760" height="760" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="320" cy="320" r="250" fill="url(#coreGlow)" opacity="0.34" filter="url(#blur64)"/>
+  <circle cx="320" cy="320" r="248" stroke="url(#ringDim)" stroke-width="1.5" stroke-dasharray="3 11" opacity="0.7"/>
+  <circle cx="320" cy="320" r="202" stroke="url(#ring)" stroke-width="2" stroke-dasharray="62 12 8 18" opacity="0.92" filter="url(#glow)"/>
+  <circle cx="320" cy="320" r="154" stroke="white" stroke-opacity="0.2" stroke-width="1.2" stroke-dasharray="2 9"/>
+  <path d="M320 122L442 198V442L320 518L198 442V198L320 122Z" stroke="url(#ring)" stroke-width="2" opacity="0.86"/>
+  <path d="M320 178L394 222V418L320 462L246 418V222L320 178Z" fill="#0A1018" fill-opacity="0.86" stroke="white" stroke-opacity="0.16"/>
+  <path d="M320 220L371 250V390L320 420L269 390V250L320 220Z" fill="url(#coreGlow)" opacity="0.92" filter="url(#glow)"/>
+  <circle cx="320" cy="320" r="38" fill="#F8FFF2"/>
+  <circle cx="320" cy="320" r="24" fill="#B8FF67"/>
+  <path d="M320 78V142M320 498V562M78 320H142M498 320H562" stroke="white" stroke-opacity="0.26"/>
+  <circle cx="320" cy="78" r="5" fill="#B8FF67"/>
+  <circle cx="562" cy="320" r="5" fill="#65E7FF"/>
+  <circle cx="320" cy="562" r="5" fill="#A58BFF"/>
+  <circle cx="78" cy="320" r="5" fill="#B8FF67"/>
+</svg>

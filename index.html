@@ -2,34 +2,47 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0f14" />
-  <meta name="description" content="PRIME RPG — компактный habit tracker для личной RPG-системы: квесты, XP, ранги, недели." />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07090e" />
+  <meta name="description" content="PRIME RPG — элитная система прокачки реальной жизни: день, неделя, XP, статы, достижения и челленджи." />
   <title>PRIME RPG</title>
-  <link rel="manifest" href="manifest.json?v=1.9.0" />
+  <link rel="manifest" href="manifest.json?v=2.0.0" />
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=1.9.0" />
+  <link rel="stylesheet" href="styles.css?v=2.0.0" />
 </head>
 <body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-block">
-        <p class="eyebrow">habit tracker</p>
-        <h1><span aria-hidden="true">⚡</span> PRIME RPG</h1>
-        <div class="runtime-strip" aria-label="Системная информация">
-          <span id="appVersionValue">v1.9</span>
-          <span id="moscowDateValue">—</span>
-          <span id="moscowWeekdayValue">—</span>
-          <strong id="moscowTimeValue">--:-- МСК</strong>
+        <img class="brand-mark" src="assets/prime-mark.svg" alt="" aria-hidden="true" />
+        <div class="brand-copy">
+          <p class="eyebrow">personal performance system</p>
+          <h1>PRIME <span>RPG</span></h1>
         </div>
       </div>
-      <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Открыть меню" aria-expanded="false">☰</button>
 
+      <div class="runtime-strip" aria-label="Системная информация">
+        <span id="appVersionValue">v2.0</span>
+        <span id="moscowDateValue">—</span>
+        <span id="moscowWeekdayValue">—</span>
+        <strong id="moscowTimeValue">--:-- МСК</strong>
+      </div>
+
+      <button class="mobile-menu-btn" id="mobileMenuBtn" type="button" aria-label="Открыть меню" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
     </header>
+
     <section class="update-banner" id="updateBanner" hidden>
       <div>
-        <strong>⬆️ Обновление доступно</strong>
-        <p id="updateBannerText">Доступна новая версия PRIME RPG.</p>
+        <span class="update-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Доступна новая версия</strong>
+          <p id="updateBannerText">Можно обновить PRIME RPG без потери данных.</p>
+        </div>
       </div>
       <div class="banner-actions">
         <button class="primary-btn" id="updateNowBtn" type="button">Обновить</button>
@@ -38,81 +51,97 @@
     </section>
 
     <nav class="tabbar" id="mainNav" aria-label="Главная навигация">
-      <button class="tab-btn active" data-tab="dashboard" type="button">👤 Профиль</button>
-      <button class="tab-btn" data-tab="daily" type="button">📅 День</button>
-      <button class="tab-btn" data-tab="weekly" type="button">📅 Неделя</button>
-      <button class="tab-btn" data-tab="calendar" type="button">🗓️ Календарь</button>
-      <button class="tab-btn" data-tab="achievements" type="button">🏆 Достижения</button>
-      <button class="tab-btn" data-tab="challenges" type="button">🎲 Челленджи</button>
-      <button class="tab-btn" data-tab="history" type="button">📈 История</button>
-      <button class="tab-btn" data-tab="settings" type="button">⚙️ Настройки</button>
+      <div class="nav-brand">
+        <img src="assets/prime-mark.svg" alt="" aria-hidden="true" />
+        <div><strong>PRIME</strong><small>navigation</small></div>
+      </div>
+      <button class="tab-btn active" data-tab="dashboard" type="button"><span class="nav-icon">◈</span><span>Профиль</span></button>
+      <button class="tab-btn" data-tab="daily" type="button"><span class="nav-icon">✓</span><span>День</span></button>
+      <button class="tab-btn" data-tab="weekly" type="button"><span class="nav-icon">⌁</span><span>Неделя</span></button>
+      <button class="tab-btn" data-tab="calendar" type="button"><span class="nav-icon">□</span><span>Календарь</span></button>
+      <button class="tab-btn" data-tab="achievements" type="button"><span class="nav-icon">◇</span><span>Достижения</span></button>
+      <button class="tab-btn" data-tab="challenges" type="button"><span class="nav-icon">✦</span><span>Челленджи</span></button>
+      <button class="tab-btn" data-tab="history" type="button"><span class="nav-icon">↗</span><span>История</span></button>
+      <button class="tab-btn" data-tab="settings" type="button"><span class="nav-icon">⚙</span><span>Настройки</span></button>
     </nav>
     <div class="menu-backdrop" id="menuBackdrop" hidden></div>
 
     <main>
       <section id="dashboard" class="tab-panel active">
-        <section class="prime-hero panel">
+        <section class="prime-hero">
+          <div class="hero-grid-lines" aria-hidden="true"></div>
           <div class="prime-hero-copy">
-            <p class="eyebrow">Prime Command</p>
-            <h2>Личный центр прогресса</h2>
-            <p class="muted">XP, статы, неделя и ритм дня в одном чистом экране.</p>
+            <div class="hero-status-line"><span class="live-dot"></span> PRIME SYSTEM ONLINE</div>
+            <p class="hero-index">PRIME / 002</p>
+            <h2>Собирай себя.<br /><em>Каждый день.</em></h2>
+            <p class="hero-description">Один экран для уровня, статов, недельного ритма и реального прогресса. Ничего лишнего.</p>
+            <div class="hero-snapshots">
+              <article><span>STATUS</span><strong id="statusRank">Ordinary</strong></article>
+              <article><span>TODAY</span><strong id="heroTodayXp">+0 XP</strong></article>
+              <article><span>WEEK</span><strong id="heroWeekXp">0+0 XP</strong></article>
+            </div>
           </div>
-          <div class="prime-hero-orbit" aria-hidden="true">
-            <span></span><span></span><span></span>
+          <div class="prime-hero-visual">
+            <img src="assets/prime-core.svg" alt="Абстрактное ядро PRIME" />
+            <div class="core-meta core-meta-a"><span>CORE</span><strong>ACTIVE</strong></div>
+            <div class="core-meta core-meta-b"><span>MODE</span><strong>BUILD</strong></div>
+            <div class="core-caption"><span>PRIME CORE</span><strong>REAL LIFE PROGRESSION ENGINE</strong></div>
           </div>
         </section>
 
         <section class="grid stats-grid">
-          <article class="stat-card">
-            <span>🏅 Уровень</span>
+          <article class="stat-card level-card">
+            <div class="stat-card-head"><span>LEVEL</span><i>01</i></div>
             <strong id="levelValue">1</strong>
             <small id="levelProgressText">0 / 1000 XP</small>
             <div class="progress"><div id="levelProgressBar"></div></div>
           </article>
-          <article class="stat-card">
-            <span>⚡ Всего XP</span>
+          <article class="stat-card xp-card">
+            <div class="stat-card-head"><span>TOTAL XP</span><i>XP</i></div>
             <strong id="totalXpValue">0</strong>
             <small>подтверждено + pending</small>
           </article>
-          <article class="stat-card">
-            <span>✅ Текущий день</span>
+          <article class="stat-card day-card">
+            <div class="stat-card-head"><span>CURRENT DAY</span><i>DAY</i></div>
             <strong id="lastDayRank">—</strong>
             <small id="lastDayXp">итог дня: +0 XP</small>
           </article>
-          <article class="stat-card">
-            <span>📅 Текущая неделя</span>
+          <article class="stat-card week-card">
+            <div class="stat-card-head"><span>CURRENT WEEK</span><i>WK</i></div>
             <strong id="weekXpValue">0 XP</strong>
             <small id="weekReportsValue">0/7 дней</small>
           </article>
         </section>
 
-
-        <section class="panel">
+        <section class="panel stat-matrix-panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">📊 Character stats</p>
-              <h3>Статы</h3>
+              <p class="eyebrow">character matrix</p>
+              <h3>Характеристики</h3>
             </div>
+            <span class="section-code">LIVE / PENDING</span>
           </div>
           <div id="statBars" class="bars-list"></div>
         </section>
 
-        <section class="grid two-col">
-          <article class="panel">
+        <section class="grid two-col dashboard-lower">
+          <article class="panel focus-panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">📅 Week</p>
+                <p class="eyebrow">weekly protocol</p>
                 <h3>Минимум недели</h3>
               </div>
+              <span class="section-code">01</span>
             </div>
             <ul id="weeklyMinimumList" class="check-list"></ul>
           </article>
-          <article class="panel">
+          <article class="panel recent-panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">📈 Recent</p>
+                <p class="eyebrow">recent activity</p>
                 <h3>Последние дни</h3>
               </div>
+              <span class="section-code">02</span>
             </div>
             <div id="recentDays" class="history-list compact"></div>
           </article>
@@ -120,175 +149,121 @@
       </section>
 
       <section id="daily" class="tab-panel">
+        <section class="page-hero page-hero-day">
+          <div>
+            <p class="eyebrow">daily protocol</p>
+            <h2 id="dailyLiveTitle">День</h2>
+            <p>Закрывай действия. Pending XP станет подтверждённым после смены дня.</p>
+          </div>
+          <div class="page-hero-mark">01</div>
+        </section>
         <form id="dailyForm" class="form-stack">
-          <section class="panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">✅ Daily quests</p>
-                <h2 id="dailyLiveTitle">День</h2>
-              </div>
-            </div>
-          </section>
-
           <section class="quest-grid" id="dailyQuestGrid"></section>
-
           <section class="panel danger-panel">
             <div class="section-head">
-              <div>
-                <p class="eyebrow">⚠️ Penalties</p>
-                <h3>Штрафы</h3>
-              </div>
+              <div><p class="eyebrow">penalties</p><h3>Штрафы</h3></div>
+              <span class="section-code">RISK</span>
             </div>
             <div id="penaltyGrid" class="checkbox-grid"></div>
           </section>
-
         </form>
       </section>
 
       <section id="weekly" class="tab-panel">
+        <section class="page-hero page-hero-week">
+          <div>
+            <p class="eyebrow">weekly protocol</p>
+            <h2 id="weeklyLiveTitle">Неделя</h2>
+            <p>Большие задачи и недельные цели. XP фиксируется после закрытия недели.</p>
+          </div>
+          <div class="page-hero-mark">07</div>
+        </section>
         <form id="weeklyForm" class="form-stack">
-          <section class="panel">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Week</p>
-                <h2 id="weeklyLiveTitle">Неделя</h2>
-              </div>
-            </div>
-          </section>
-
           <section class="quest-grid" id="weeklyBossGrid"></section>
-
         </form>
       </section>
 
       <section id="calendar" class="tab-panel">
+        <section class="page-hero page-hero-calendar">
+          <div><p class="eyebrow">performance map</p><h2>Календарь</h2><p>Вся история месяца одним взглядом.</p></div>
+          <div class="page-hero-mark">30</div>
+        </section>
         <section class="panel calendar-panel">
           <div class="section-head">
-            <div>
-              <p class="eyebrow">🗓️ Calendar</p>
-              <h2 id="monthCalendarTitle">Календарь</h2>
-            </div>
+            <div><p class="eyebrow">monthly heatmap</p><h2 id="monthCalendarTitle">Календарь</h2></div>
+            <span class="section-code">MSK</span>
           </div>
-          <div class="calendar-weekdays" aria-hidden="true">
-            <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span>
-          </div>
+          <div class="calendar-weekdays" aria-hidden="true"><span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>ВС</span></div>
           <div id="monthCalendar" class="month-calendar"></div>
-          <div class="calendar-legend">
-            <span><i class="rank-solid"></i>Solid+</span>
-            <span><i class="rank-prime"></i>Prime+</span>
-            <span><i class="rank-broken"></i>Broken</span>
-          </div>
+          <div class="calendar-legend"><span><i class="rank-solid"></i>Solid+</span><span><i class="rank-prime"></i>Prime+</span><span><i class="rank-broken"></i>Broken</span></div>
         </section>
       </section>
 
       <section id="achievements" class="tab-panel">
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">🏆 Achievements</p>
-              <h2>Достижения</h2>
-            </div>
-            <strong class="compact-pill" id="achievementSummary">0/20 открыто</strong>
-          </div>
-          <div id="achievementGrid" class="achievement-grid"></div>
+        <section class="page-hero page-hero-achievements">
+          <div><p class="eyebrow">collection system</p><h2>Достижения</h2><p>Подтверждение стабильности, роста и сложных закрытий.</p></div>
+          <strong class="compact-pill" id="achievementSummary">0/20 открыто</strong>
         </section>
+        <section class="panel achievements-panel"><div id="achievementGrid" class="achievement-grid"></div></section>
       </section>
 
       <section id="challenges" class="tab-panel">
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">🎲 Daily challenge</p>
-              <h2>Челлендж дня</h2>
-            </div>
-          </div>
-          <form id="challengeForm" class="form-stack">
-            <div id="dailyChallengeBox"></div>
-          </form>
+        <section class="page-hero page-hero-challenges">
+          <div><p class="eyebrow">elite trials</p><h2>Челленджи</h2><p>Один сложный вызов в день. Дополнительный XP за реальное усилие.</p></div>
+          <div class="page-hero-mark">✦</div>
+        </section>
+        <section class="panel challenge-stage">
+          <div class="section-head"><div><p class="eyebrow">daily challenge</p><h2>Испытание дня</h2></div><span class="section-code">RANDOM</span></div>
+          <form id="challengeForm" class="form-stack"><div id="dailyChallengeBox"></div></form>
         </section>
         <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">📚 Library</p>
-              <h2>Список челленджей</h2>
-            </div>
-          </div>
+          <div class="section-head"><div><p class="eyebrow">challenge archive</p><h2>Библиотека</h2></div><span class="section-code">10 TRIALS</span></div>
           <div id="challengeLibrary" class="mini-library-grid"></div>
         </section>
       </section>
 
       <section id="history" class="tab-panel">
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">History</p>
-              <h2>История</h2>
-            </div>
-            <button class="ghost-btn" id="copySummaryBtn" type="button">📋 Скопировать сводку</button>
-          </div>
-          <div id="historyDays" class="history-list"></div>
+        <section class="page-hero page-hero-history">
+          <div><p class="eyebrow">activity log</p><h2>История</h2><p>Подтверждённые дни, недели и полученный опыт.</p></div>
+          <button class="ghost-btn" id="copySummaryBtn" type="button">Скопировать сводку</button>
         </section>
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Weeks</p>
-              <h2>Закрытые недели</h2>
-            </div>
-          </div>
-          <div id="historyWeeks" class="history-list"></div>
-        </section>
+        <section class="panel"><div class="section-head"><div><p class="eyebrow">days</p><h2>Дни</h2></div><span class="section-code">LOG</span></div><div id="historyDays" class="history-list"></div></section>
+        <section class="panel"><div class="section-head"><div><p class="eyebrow">weeks</p><h2>Закрытые недели</h2></div><span class="section-code">ARCHIVE</span></div><div id="historyWeeks" class="history-list"></div></section>
       </section>
 
       <section id="settings" class="tab-panel">
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">🧰 System</p>
-              <h2>Данные и версия</h2>
-              <p class="muted">Синхронизация, обновление, backup и восстановление.</p>
+        <section class="page-hero page-hero-settings">
+          <div><p class="eyebrow">system control</p><h2>Настройки</h2><p>Данные, версии, quest packs и восстановление.</p></div>
+          <div class="page-hero-mark">⚙</div>
+        </section>
+        <section class="settings-grid">
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">system</p><h2>Данные и версия</h2><p class="muted">Синхронизация, обновление и backup.</p></div><span class="section-code">SYS</span></div>
+            <div class="form-actions wrap-actions">
+              <button class="ghost-btn" id="syncClockBtn" type="button">Синхронизация</button>
+              <button class="ghost-btn update-btn" id="forceUpdateBtn" type="button">Обновить версию</button>
+              <button class="ghost-btn" id="exportBtn" type="button">Экспорт</button>
+              <label class="ghost-btn file-label" for="importFile">Импорт backup</label>
+              <input id="importFile" type="file" accept="application/json" hidden />
             </div>
-          </div>
-          <div class="form-actions wrap-actions">
-            <button class="ghost-btn" id="syncClockBtn" type="button">🕒 Синхронизация</button>
-            <button class="ghost-btn update-btn" id="forceUpdateBtn" type="button">⬆️ Обновить версию</button>
-            <button class="ghost-btn" id="exportBtn" type="button">💾 Экспорт</button>
-            <label class="ghost-btn file-label" for="importFile">📥 Импорт backup</label>
-            <input id="importFile" type="file" accept="application/json" hidden />
-          </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head"><div><p class="eyebrow">quest packs</p><h2>Импорт задач</h2><p class="muted" id="questImportInfo">Дневные и недельные квесты. До 10 задач на категорию.</p></div><span class="section-code">JSON</span></div>
+            <div class="form-actions wrap-actions">
+              <button class="primary-btn" id="downloadQuestTemplateBtn" type="button">Скачать шаблон</button>
+              <label class="ghost-btn file-label" for="questImportFile">Импортировать задачи</label>
+              <input id="questImportFile" type="file" accept="application/json" hidden />
+              <button class="ghost-btn" id="resetQuestConfigBtn" type="button">Сбросить квесты</button>
+              <button class="ghost-btn" id="enableNotificationsBtn" type="button">Уведомления</button>
+            </div>
+            <div class="schema-box"><p class="muted">Поддерживаются <b>merge</b>, <b>replace</b> и <b>replace_all</b>.</p><code>{ "type": "prime-rpg-quest-pack", "version": 2, "dailyQuests": [...], "weeklyQuests": [...] }</code></div>
+          </section>
         </section>
 
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">📦 Quest import</p>
-              <h2>Импорт задач</h2>
-              <p class="muted" id="questImportInfo">Дневные и недельные квесты. Максимум 10 квестов на категорию.</p>
-            </div>
-          </div>
-          <div class="form-actions wrap-actions">
-            <button class="primary-btn" id="downloadQuestTemplateBtn" type="button">📄 Скачать шаблон задач</button>
-            <label class="ghost-btn file-label" for="questImportFile">📥 Импортировать задачи</label>
-            <input id="questImportFile" type="file" accept="application/json" hidden />
-            <button class="ghost-btn" id="resetQuestConfigBtn" type="button">↩️ Сбросить квесты</button>
-            <button class="ghost-btn" id="enableNotificationsBtn" type="button">🔔 Уведомления</button>
-          </div>
-          <div class="schema-box">
-            <p class="muted">Файл можно скинуть в ChatGPT, заполнить дневные/недельные квесты и загрузить сюда. <b>merge</b> — добавить, <b>replace</b> — заменить категории из файла, <b>replace_all</b> — заменить весь список.</p>
-            <code>{ "type": "prime-rpg-quest-pack", "version": 2, "mode": "replace_all", "dailyQuests": [...], "weeklyQuests": [...] }</code>
-          </div>
-        </section>
-
-        <section class="panel danger-panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">🧨 Danger zone</p>
-              <h2>Сброс</h2>
-              <p class="muted">Очищает текущий день, недели, историю, настройки и локальные данные PRIME RPG.</p>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="danger-btn" id="resetBtn" type="button">🧨 Сбросить всё</button>
-          </div>
+        <section class="panel danger-panel danger-zone">
+          <div class="section-head"><div><p class="eyebrow">danger zone</p><h2>Полный сброс</h2><p class="muted">Удаляет текущий день, историю, настройки и локальные данные.</p></div><span class="section-code">RESET</span></div>
+          <div class="form-actions"><button class="danger-btn" id="resetBtn" type="button">Сбросить всё</button></div>
         </section>
       </section>
     </main>
@@ -300,8 +275,7 @@
       const tz = 'Europe/Moscow';
       function parts(date) {
         return Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
-          timeZone: tz,
-          year: 'numeric', month: '2-digit', day: '2-digit',
+          timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
           hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
         }).formatToParts(date).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
       }
@@ -312,17 +286,12 @@
           const dateRu = new Intl.DateTimeFormat('ru-RU', { timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric' }).format(now);
           const weekdayRu = new Intl.DateTimeFormat('ru-RU', { timeZone: tz, weekday: 'long' }).format(now);
           const set = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = value; };
-          set('moscowDateValue', dateRu);
-          set('moscowWeekdayValue', weekdayRu);
-          set('moscowTimeValue', `${p.hour}:${p.minute} МСК`);
-        } catch (error) {
-          console.warn('Runtime clock fallback failed', error);
-        }
+          set('moscowDateValue', dateRu); set('moscowWeekdayValue', weekdayRu); set('moscowTimeValue', `${p.hour}:${p.minute} МСК`);
+        } catch (error) { console.warn('Runtime clock fallback failed', error); }
       }
-      tick();
-      window.setInterval(tick, 1000);
+      tick(); window.setInterval(tick, 1000);
     })();
   </script>
-  <script src="app.js?v=1.9.0"></script>
+  <script src="app.js?v=2.0.0"></script>
 </body>
 </html>
